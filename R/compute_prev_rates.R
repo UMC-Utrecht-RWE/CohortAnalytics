@@ -1,19 +1,24 @@
 #' Wrapper function to compute statistics relating to prevelance
+#'
 #'  rates, ratios and differences
 #'  per group and between groups
 #'  with or without weights
+#'
 #' key functionality:
 #'  est_inc_prev
+#'
 #' output:
 #'  point estimates (mean)
 #'  CI based on bootstrap results
-#'  @param aesifup_input data
-#'  @param eventCol column of event 0/1
-#'  @param iptw column of weight
-#'  @param target_aesi choice of outcome to calculate prevlance
-#'  @param boot_vec vector from bootstrap result to calculate CI
-#'  @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
-#'  @export
+#'
+#' @param aesifup_input data
+#' @param eventCol column of event 0/1
+#' @param iptw column of weight
+#' @param target_aesi choice of outcome to calculate prevlance
+#' @param boot_vec vector from bootstrap result to calculate CI
+#' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
+#'
+#' @export
 compute_prev_rates <- function(
     aesifup_input,
     eventCol = "event",

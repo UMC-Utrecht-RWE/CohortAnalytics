@@ -2,22 +2,7 @@
 % Please edit documentation in R/compute_prev_rates.R
 \name{compute_prev_rates}
 \alias{compute_prev_rates}
-\title{Wrapper function to compute statistics relating to prevelance
-rates, ratios and differences
-per group and between groups
-with or without weights
-key functionality:
-est_inc_prev
-output:
-point estimates (mean)
-CI based on bootstrap results
-@param aesifup_input data
-@param eventCol column of event 0/1
-@param iptw column of weight
-@param target_aesi choice of outcome to calculate prevlance
-@param boot_vec vector from bootstrap result to calculate CI
-@param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
-@export}
+\title{Wrapper function to compute statistics relating to prevelance}
 \usage{
 compute_prev_rates(
   aesifup_input,
@@ -28,21 +13,29 @@ compute_prev_rates(
   adjust = "adj"
 )
 }
+\arguments{
+\item{aesifup_input}{data}
+
+\item{eventCol}{column of event 0/1}
+
+\item{iptw}{column of weight}
+
+\item{target_aesi}{choice of outcome to calculate prevlance}
+
+\item{boot_vec}{vector from bootstrap result to calculate CI}
+
+\item{adjust}{either 'adj' adjusted or 'unadj' unadjusted by iptw}
+}
 \description{
-Wrapper function to compute statistics relating to prevelance
 rates, ratios and differences
 per group and between groups
 with or without weights
+}
+\details{
 key functionality:
 est_inc_prev
+
 output:
 point estimates (mean)
 CI based on bootstrap results
-@param aesifup_input data
-@param eventCol column of event 0/1
-@param iptw column of weight
-@param target_aesi choice of outcome to calculate prevlance
-@param boot_vec vector from bootstrap result to calculate CI
-@param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
-@export
 }
