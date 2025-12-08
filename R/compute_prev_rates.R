@@ -37,8 +37,8 @@ compute_prev_rates <- function(
   } else if (adjust == "adj") {
     n_pat_exp <- aesifup_input[group == "EXPOSED", sum(wt)]
     n_pat_con <- aesifup_input[group == "CONTROL", sum(wt)]
-    n_out_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[eventCol]] * wt)]
-    n_out_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[eventCol]] * wt)]
+    n_out_exp <- aesifup_input[group == "EXPOSED", sum(.SD[[eventCol]] * wt)]
+    n_out_con <- aesifup_input[group == "CONTROL", sum(.SD[[eventCol]] * wt)]
   }
   # point estimates
   pp_pax <- n_out_exp / n_pat_exp
