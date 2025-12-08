@@ -15,7 +15,7 @@
 #' @param eventCol column of event 0/1
 #' @param iptw column of weight
 #' @param target_aesi choice of outcome to calculate prevlance
-#' @param boot_vec vector from bootstrap result to calculate CI
+#' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
 #'
 #' @export
@@ -24,7 +24,7 @@ compute_prev_rates <- function(
     eventCol = "event",
     iptw = "wt",
     target_aesi,
-    boot_vec,
+    bootstrap,
     adjust = "adj"
 ) {
   if (adjust == "unadj"){

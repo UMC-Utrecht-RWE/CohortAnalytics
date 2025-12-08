@@ -9,7 +9,7 @@ compute_prev_rates(
   eventCol = "event",
   iptw = "wt",
   target_aesi,
-  boot_vec,
+  bootstrap,
   adjust = "adj"
 )
 }
@@ -22,7 +22,7 @@ compute_prev_rates(
 
 \item{target_aesi}{choice of outcome to calculate prevlance}
 
-\item{boot_vec}{vector from bootstrap result to calculate CI}
+\item{bootstrap}{bootstrap result to calculate CI}
 
 \item{adjust}{either 'adj' adjusted or 'unadj' unadjusted by iptw}
 }
