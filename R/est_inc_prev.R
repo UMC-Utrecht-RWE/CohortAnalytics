@@ -9,21 +9,27 @@
 #' @param py person years of follow up
 #' @param scale_IR how should the incidence/prevalence be scaled; i.e., incidence per X units of person-time
 #' @param type "incidence" or "prevalence"
-#' @param CImethod "wilson" or "clopper" based estimation of CIs
+#' @param CImethod "wilson" or "clopper" or "bootstrap" or NULL
+#' @param boot_vec vector of bootstrap result to pass to CImethod = "bootstrap"
 #'
 #' @returns
 #' @export
 #'
 #' @examples
-est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", CImethod = NULL){
+est_inc_prev <- function(
+    n_pat,
+    n_out,
+    py = NULL,
+    scale_IR,
+    type = "incidence",
+    CImethod = NULL,
+    boot_vec = NULL){
   #CImethod required for prevalence CIs
   # n_pat = n_pat_exp
   # n_out = n_out_exp
   # py = py_exp
   # scale_IR = scale_IR
   # type = type
-
-  if(py == 0){ return(data.frame(ir = -88,lb_ir = -88, ub_ir = -88)) }
 
   if(type == "incidence"){
     if(is.null(py)){stop("for incidence calculation, py must be non-NULL")}
@@ -34,15 +40,17 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
   }
 
   if(type == "prevalence"){
-    # prevalence using clopper formula
-    if(CImethod == "clopper"){
+    if (is.null(CImethod)) {
+      ir <- n_out / n_pat
+      lb_ir <- ub_ir <- NA
+    } else if(CImethod == "clopper") {
+      # prevalence using clopper formula
       test_out <- binom.test(n_out, n_pat)
       lb_ir <- test_out$conf.int[1]
       ub_ir <- test_out$conf.int[2]
       ir <- test_out$estimate
-    }
-    # prevalence using wilson formula
-    if(CImethod == "wilson"){
+    } else if(CImethod == "wilson"){
+      # prevalence using wilson formula
       ir <- n_out / n_pat
       z <- qnorm(0.975)  # z-score for 95% CI
       denom <- 1 + (z^2 / n_pat)
@@ -55,10 +63,26 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
       # Use Wilson CI as the main output
       lb_ir <- lb_wilson
       ub_ir <- ub_wilson
+    } else if (CImethod == "bootstrap") {
+      # CI using 2.5 and 97.5 percentiles of bootstrap result
+      # Validate boot_vec
+      if (is.null(boot_vec) || length(boot_vec) == 0) {
+        stop("`boot_vec` must be a non-empty numeric vector for bootstrap CIs.")
+      }
+      if (!is.numeric(boot_vec)) {
+        stop("`boot_vec` must be numeric.")
+      }
+
+      # Compute percentile CI (2.5% and 97.5%)
+      qs <- stats::quantile(boot_vec, probs = c(0.025, 0.975), na.rm = TRUE, names = FALSE)
+
+      lb_ir <- qs[1]
+      ub_ir <- qs[2]
+      ir <- NA
     }
   }
 
-  return(data.frame(ir_est = ir*scale_IR, ir_lb = lb_ir*scale_IR, ir_ub = ub_ir*scale_IR))
+  return(data.table(ir_est = ir*scale_IR, ir_lb = lb_ir*scale_IR, ir_ub = ub_ir*scale_IR))
 }
 
 

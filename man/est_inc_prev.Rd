@@ -10,7 +10,8 @@ est_inc_prev(
   py = NULL,
   scale_IR,
   type = "incidence",
-  CImethod = NULL
+  CImethod = NULL,
+  boot_vec = NULL
 )
 }
 \arguments{
@@ -24,7 +25,9 @@ est_inc_prev(
 
 \item{type}{"incidence" or "prevalence"}
 
-\item{CImethod}{"wilson" or "clopper" based estimation of CIs}
+\item{CImethod}{"wilson" or "clopper" or "bootstrap" or NULL}
+
+\item{boot_vec}{vector of bootstrap result to pass to CImethod = "bootstrap"}
 }
 \description{
 Title
