@@ -4,6 +4,15 @@
 # feeds this model to est_km function for vector of timepoints
 # returns 1-KM scaled with scale_IR, with lower and upper bounds
 # collects aesi name, time, exposed and control risks into one table
+#' @param aesifup data
+#' @param timepoints a vector of time to be used in survival model
+#' @param fupcol column name of follow up time, to be used in survival model
+#' @param eventCol event column name
+#' @param use_weights TRUE/FALSE
+#' @param iptw column name of inverse probability weight
+#' @param scale_IR report rate to multiply by this scale
+#' @param comparison_measures TRUE means risk rate will be compared with control group
+#' @export
 
 create_risk_table <- function(aesifup,
                               timepoints,
@@ -11,9 +20,7 @@ create_risk_table <- function(aesifup,
                               eventCol = "eventCount",
                               use_weights = TRUE,
                               iptw = "ip_weight",
-                              target_aesi,
                               scale_IR = 10000,
-                              end_risk,
                               comparison_measures = TRUE){
   # aesifup <- aesifup_input_tmp
   # timepoints = max_fuptime

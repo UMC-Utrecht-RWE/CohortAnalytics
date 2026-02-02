@@ -1,5 +1,14 @@
 # ---- function to estimate hazard ratios -------------
 # returns dummy output if not possible to estimate
+#' @param aesifup_input data
+#' @param fupcol column name of follow up time, to be used in survival model
+#' @param eventCol event column name
+#' @param iptw column name of inverse probability weight
+#' @param model_type weighted or crude
+#' @param return_dummy_output TRUE/FALSE whether to return a dummy output
+#' @param aesi_name outcome label
+#' @export
+
 estimate_HR <- function(aesifup_input, fupCol = "fup",
                         eventCol = "eventCount",
                         iptw = "ip_weights",

@@ -6,6 +6,8 @@
 #'
 #' key functionality:
 #'  est_inc_prev
+#'  create_risk_table
+#'  estimate_HR
 #'
 #' output:
 #'  point estimates (mean)
@@ -14,16 +16,15 @@
 #' @param aesifup_input data
 #' @param eventCol column of event 0/1
 #' @param iptw column of weight
-#' @param target_aesi choice of outcome to calculate prevlance
 #' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
+#' @param survival_input list of input for fitting 1-KM model and hazard ratio
 #'
 #' @export
 compute_prev_rates <- function(
     aesifup_input,
     eventCol = "event",
     iptw = "wt",
-    target_aesi,
     bootstrap,
     adjust = "adj"
 ) {
