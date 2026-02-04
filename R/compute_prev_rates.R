@@ -18,6 +18,7 @@
 #' @param iptw column of weight
 #' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
+#' @param estimate_survival TRUE/FALSE whether to apply survival model
 #' @param survival_input list of input for fitting 1-KM model and hazard ratio
 #'
 #' @export
@@ -26,7 +27,10 @@ compute_prev_rates <- function(
     eventCol = "event",
     iptw = "wt",
     bootstrap,
-    adjust = "adj"
+    adjust = "adj",
+    scale_IR = 1,
+    estimate_survival = FALSE,
+    survival_input = NULL
 ) {
   n_pat_exp <- aesifup_input[group == "EXPOSED", .N]
   n_pat_con <- aesifup_input[group == "CONTROL", .N]
@@ -50,7 +54,35 @@ compute_prev_rates <- function(
   pp_comp <- n_out_con_weighted/n_pat_con_weighted * scale_IR
   pr <- pp_pax / pp_comp
   pd <- pp_pax - pp_comp
-  if(is.null(bootstrap))
+
+  survival_output_list <- list()
+  if (estimate_survival) {
+    risk_table <- create_risk_table(
+      aesifup = aesifup_input,
+      timepoints = survival_input$risk_window,
+      fupCol = "fup",
+      eventCol = eventCol,
+      use_weights = adjust == "adj",
+      iptw = iptw,
+      scale_IR = scale_IR,
+      comparison_measures = TRUE,
+      dummy_code = NA)
+    hr_table <- estimate_HR(
+      aesifup_input,
+      fupCol = "fup",
+      eventCol = eventCol,
+      iptw = iptw,
+      model_type = "crude",
+      return_dummy_output = FALSE,
+      aesi_name = "",
+      dummy_code = NA)
+    survival_output_list <- list(
+      rr = risk_table$cuminc_est_exp / risk_table$cuminc_est_con,
+      rd = risk_table$cuminc_est_exp - risk_table$cuminc_est_con,
+      hr = hr_table$hr_est
+    )
+  }
+  if (is.null(bootstrap))
     return(data.table(n_pat_exp, n_pat_con, n_out_exp, n_out_con,
                       pp_pax, pp_comp, pr, pd))
   else{

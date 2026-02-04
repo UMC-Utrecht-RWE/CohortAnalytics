@@ -7,6 +7,7 @@
 #' @param model_type weighted or crude
 #' @param return_dummy_output TRUE/FALSE whether to return a dummy output
 #' @param aesi_name outcome label
+#' @param dummy_code use code instead of NA
 #' @export
 
 estimate_HR <- function(aesifup_input, fupCol = "fup",
@@ -14,9 +15,10 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
                         iptw = "ip_weights",
                         model_type = "crude",
                         return_dummy_output = FALSE,
-                        aesi_name = ""){
+                        aesi_name = "",
+                        dummy_code = -88){
 
-  dummy_output <- data.frame(hr_est = -88, hr_lb = -88, hr_ub = -88)
+  dummy_output <- data.frame(hr_est = dummy_code, hr_lb = dummy_code, hr_ub = dummy_code)
   if(return_dummy_output == TRUE){
 
     return(dummy_output)

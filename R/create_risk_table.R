@@ -12,6 +12,7 @@
 #' @param iptw column name of inverse probability weight
 #' @param scale_IR report rate to multiply by this scale
 #' @param comparison_measures TRUE means risk rate will be compared with control group
+#' @param dummy_code use code to fill NA values
 #' @export
 
 create_risk_table <- function(aesifup,
@@ -21,7 +22,8 @@ create_risk_table <- function(aesifup,
                               use_weights = TRUE,
                               iptw = "ip_weight",
                               scale_IR = 10000,
-                              comparison_measures = TRUE){
+                              comparison_measures = TRUE,
+                              dummy_code = -99){
   # aesifup <- aesifup_input_tmp
   # timepoints = max_fuptime
   # target_aesi = target_aesi
@@ -34,13 +36,13 @@ create_risk_table <- function(aesifup,
 
   # if no data, return NA flags
   if(nrow(aesifup) == 0){
-    return(data.frame(time =-99,
-                      "cuminc_est_exp" = -99,
-                      "cuminc_lb_exp"  = -99,
-                      "cuminc_ub_exp" = -99,
-                      "cuminc_est_con" = -99,
-                      "cuminc_lb_con" = -99,
-                      "cuminc_ub_con" = -99))
+    return(data.frame(time =dummy_code,
+                      "cuminc_est_exp" = dummy_code,
+                      "cuminc_lb_exp"  = dummy_code,
+                      "cuminc_ub_exp" = dummy_code,
+                      "cuminc_est_con" = dummy_code,
+                      "cuminc_lb_con" = dummy_code,
+                      "cuminc_ub_con" = dummy_code))
   } else {
     if(comparison_measures){
 
@@ -65,7 +67,7 @@ create_risk_table <- function(aesifup,
                                                  simplify = FALSE)))
       } else {
         risk_exp <- data.frame(
-          time = -99,
+          time = dummy_code,
           cuminc_est = 0,
           cuminc_lb = 0,
           cuminc_ub = 0
@@ -87,7 +89,7 @@ create_risk_table <- function(aesifup,
                                                  simplify = FALSE)))
       } else {
         risk_con <- data.frame(
-          time = -99,
+          time = dummy_code,
           cuminc_est = 0,
           cuminc_lb = 0,
           cuminc_ub = 0
@@ -119,9 +121,9 @@ create_risk_table <- function(aesifup,
                          "cuminc_est_exp" = risk_exp$cuminc_est,
                          "cuminc_lb_exp"  = risk_exp$cuminc_lb,
                          "cuminc_ub_exp" = risk_exp$cuminc_ub,
-                         "cuminc_est_con"  = ifelse(comparison_measures, risk_con$cuminc_est, -99),
-                         "cuminc_lb_con" = ifelse(comparison_measures, risk_con$cuminc_lb, -99),
-                         "cuminc_ub_con" = ifelse(comparison_measures, risk_con$cuminc_ub, -99))
+                         "cuminc_est_con"  = ifelse(comparison_measures, risk_con$cuminc_est, dummy_code),
+                         "cuminc_lb_con" = ifelse(comparison_measures, risk_con$cuminc_lb, dummy_code),
+                         "cuminc_ub_con" = ifelse(comparison_measures, risk_con$cuminc_ub, dummy_code))
   }
   return(output)
 }
