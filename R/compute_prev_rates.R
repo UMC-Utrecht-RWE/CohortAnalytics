@@ -55,8 +55,13 @@ compute_prev_rates <- function(
   pr <- pp_pax / pp_comp
   pd <- pp_pax - pp_comp
 
-  survival_output_list <- list()
-  if (estimate_survival) {
+  # estimators - columns to use from boostrap results
+  if (!estimate_survival) {
+    boot_cols <- c("pp_pax", "pp_comp", "pr", "pd")
+    survival_output_list <- list()
+  } else {
+    boot_cols <- c("rr", "rd", "hr")
+    # survival risk estimate: rr, rd, hr
     risk_table <- create_risk_table(
       aesifup = aesifup_input,
       timepoints = survival_input$risk_window,
@@ -82,12 +87,14 @@ compute_prev_rates <- function(
       hr = hr_table$hr_est
     )
   }
+
+  # bootstrap CI estimate
   if (is.null(bootstrap))
     return(data.table(n_pat_exp, n_pat_con, n_out_exp, n_out_con,
-                      pp_pax, pp_comp, pr, pd))
+                      pp_pax, pp_comp, pr, pd, do.call(cbind, survival_output_list)))
   else{
     boot_ci_list <- list()
-    for (prev_suffix in c("pp_pax", "pp_comp", "pr", "pd")) {
+    for (prev_suffix in boot_cols) {
       boot_col_name <- paste0(prev_suffix, "_", adjust)
       boot_vec <- bootstrap[, get(boot_col_name)]
       boot_ci_list[[prev_suffix]] <- est_inc_prev(
@@ -98,6 +105,8 @@ compute_prev_rates <- function(
           , .(ir_lb, ir_ub)]
     }
     return(data.table(n_pat_exp, n_pat_con, n_out_exp, n_out_con,
-                      pp_pax, pp_comp, pr, pd, do.call(cbind, boot_ci_list)))
+                      pp_pax, pp_comp, pr, pd,
+                      do.call(cbind, survival_output_list),
+                      do.call(cbind, boot_ci_list)))
   }
 }
