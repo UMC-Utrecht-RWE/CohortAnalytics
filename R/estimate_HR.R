@@ -41,6 +41,13 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   modelobj <- fitmod_cox(model_formula, iptw = iptw,
                          model_type = model_type,aesi_name = aesi_name,aesifup_input)
 
+
+  # if model fitting returned logger object or not a coxph, return dummy output
+  if(!inherits(modelobj, "coxph")){
+    return(dummy_output)
+  }
+
+
   # if model fitting error, return error flag
 
   if(is.character(modelobj)){ return(dummy_output) }
