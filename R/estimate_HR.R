@@ -49,6 +49,8 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   coxcoef <- summary(modelobj)$coefficients
   hr_est <- coxcoef[colnames(coxcoef) == "coef"]
   hr_se <- coxcoef[colnames(coxcoef) == "robust se"]
+  if(length(hr_se) == 0)
+    hr_se <- 0
 
   # get confidence interval
   hr_lb <- hr_est + qnorm(0.025)*hr_se
