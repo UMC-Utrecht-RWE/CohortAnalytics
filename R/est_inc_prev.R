@@ -2,7 +2,7 @@
 # helper functions to compute incidence rates and prevalence rates per group
 
 # this function uses analytic/closed form expressions (CIs valid under assumption of independent observations)
-#' Title
+#' Estimate incidence rates or prevalence rates
 #'
 #' @param n_pat number of patients (individuals)
 #' @param n_out number of outcomes
@@ -12,10 +12,7 @@
 #' @param CImethod "wilson" or "clopper" or "bootstrap" or NULL
 #' @param boot_vec vector of bootstrap result to pass to CImethod = "bootstrap"
 #'
-#' @returns
 #' @export
-#'
-#' @examples
 est_inc_prev <- function(
     n_pat,
     n_out,

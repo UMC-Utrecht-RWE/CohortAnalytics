@@ -30,14 +30,11 @@
 #' @param scale_IR what scaling to perform for incidence/prevalence, i.e., events per X. Defaults to 10000
 #' @param model_based_control TRUE/FALSE. Use GEE to estimate incidence/prevalence in the control group (TRUE) or an analytic formula that assumes independent observations (FALSE)
 #' @param weighted_IR use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)
-#' @param end_risk
+#' @param end_risk end of risk period for computing cumulative incidence
 #' @param output_format defaults to `data.table`, otherwise returns data.frame.
 #' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed
 #'
-#' @returns
 #' @export
-#'
-#' @examples
 compute_rates_cohort <- function(aesifup_input,
                                  fupCol = "fup",
                                  pyrCol = "pyr",

@@ -2,4 +2,6 @@
 
 export(compute_prev_rates)
 export(compute_rates_cohort)
+export(create_risk_table)
 export(est_inc_prev)
+export(estimate_HR)

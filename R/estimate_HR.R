@@ -1,7 +1,9 @@
 # ---- function to estimate hazard ratios -------------
 # returns dummy output if not possible to estimate
+#' Estimate hazard ratios using Cox proportional hazards model
+#'
 #' @param aesifup_input data
-#' @param fupcol column name of follow up time, to be used in survival model
+#' @param fupCol column name of follow up time, to be used in survival model
 #' @param eventCol event column name
 #' @param iptw column name of inverse probability weight
 #' @param model_type weighted or crude

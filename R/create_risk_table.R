@@ -4,9 +4,11 @@
 # feeds this model to est_km function for vector of timepoints
 # returns 1-KM scaled with scale_IR, with lower and upper bounds
 # collects aesi name, time, exposed and control risks into one table
+#' Create risk table using Kaplan-Meier estimates
+#'
 #' @param aesifup data
 #' @param timepoints a vector of time to be used in survival model
-#' @param fupcol column name of follow up time, to be used in survival model
+#' @param fupCol column name of follow up time, to be used in survival model
 #' @param eventCol event column name
 #' @param use_weights TRUE/FALSE
 #' @param iptw column name of inverse probability weight

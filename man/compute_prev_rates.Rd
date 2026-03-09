@@ -8,9 +8,11 @@ compute_prev_rates(
   aesifup_input,
   eventCol = "event",
   iptw = "wt",
-  target_aesi,
   bootstrap,
-  adjust = "adj"
+  adjust = "adj",
+  scale_IR = 1,
+  estimate_survival = FALSE,
+  survival_input = NULL
 )
 }
 \arguments{
@@ -20,11 +22,13 @@ compute_prev_rates(
 
 \item{iptw}{column of weight}
 
-\item{target_aesi}{choice of outcome to calculate prevlance}
-
 \item{bootstrap}{bootstrap result to calculate CI}
 
 \item{adjust}{either 'adj' adjusted or 'unadj' unadjusted by iptw}
+
+\item{estimate_survival}{TRUE/FALSE whether to apply survival model}
+
+\item{survival_input}{list of input for fitting 1-KM model and hazard ratio}
 }
 \description{
 rates, ratios and differences
@@ -34,6 +38,8 @@ with or without weights
 \details{
 key functionality:
 est_inc_prev
+create_risk_table
+estimate_HR
 
 output:
 point estimates (mean)
