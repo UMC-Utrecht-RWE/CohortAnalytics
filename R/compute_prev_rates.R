@@ -104,14 +104,14 @@ compute_prev_rates <- function(
     for (prev_suffix in boot_cols) {
       boot_col_name <- paste0(prev_suffix, "_", adjust)
       boot_vec <- bootstrap[[boot_col_name]]
-      boot_ci_list[[prev_suffix]] <- est_inc_prev(
+      boot_ci <- est_inc_prev(
         scale_IR = 1,
         type = "prevalence",
         CImethod = "bootstrap",
         boot_vec = boot_vec
-      )[
-        , .(ir_lb, ir_ub)
-      ]
+      )
+      boot_ci_list[[prev_suffix]] <-
+        boot_ci[, c("ir_lb", "ir_ub"), drop = FALSE]
     }
     return(data.table(
       n_pat_exp, n_pat_con, n_out_exp, n_out_con,
