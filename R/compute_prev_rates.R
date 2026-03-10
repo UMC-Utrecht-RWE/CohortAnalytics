@@ -15,6 +15,7 @@
 #'
 #' @param aesifup_input data
 #' @param eventCol column of event 0/1
+#' @param groupCol column identifying exposed/control group
 #' @param iptw column of weight
 #' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
@@ -25,6 +26,7 @@
 compute_prev_rates <- function(
     aesifup_input,
     eventCol = "event",
+    groupCol = "group",
     iptw = "wt",
     bootstrap,
     adjust = "adj",
@@ -32,10 +34,10 @@ compute_prev_rates <- function(
     estimate_survival = FALSE,
     survival_input = NULL
 ) {
-  n_pat_exp <- aesifup_input[group == "EXPOSED", .N]
-  n_pat_con <- aesifup_input[group == "CONTROL", .N]
-  n_out_exp <- aesifup_input[group == "EXPOSED", sum(.SD[[eventCol]])]
-  n_out_con <- aesifup_input[group == "CONTROL", sum(.SD[[eventCol]])]
+  n_pat_exp <- aesifup_input[get(groupCol) == "EXPOSED", .N]
+  n_pat_con <- aesifup_input[get(groupCol) == "CONTROL", .N]
+  n_out_exp <- aesifup_input[get(groupCol) == "EXPOSED", sum(.SD[[eventCol]])]
+  n_out_con <- aesifup_input[get(groupCol) == "CONTROL", sum(.SD[[eventCol]])]
   if (adjust == "unadj") {
     n_pat_exp_weighted <- n_pat_exp
     n_pat_con_weighted <- n_pat_con
@@ -43,11 +45,11 @@ compute_prev_rates <- function(
     n_out_con_weighted <- n_out_con
   }
   else if (adjust == "adj") {
-    n_pat_exp_weighted <- aesifup_input[group == "EXPOSED", sum(wt)]
-    n_pat_con_weighted <- aesifup_input[group == "CONTROL", sum(wt)]
-    n_out_exp_weighted <- aesifup_input[group == "EXPOSED", sum(.SD[[eventCol]] *
+    n_pat_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(wt)]
+    n_pat_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(wt)]
+    n_out_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(.SD[[eventCol]] *
                                                                   wt)]
-    n_out_con_weighted <- aesifup_input[group == "CONTROL", sum(.SD[[eventCol]] *
+    n_out_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(.SD[[eventCol]] *
                                                                   wt)]
   }
   pp_pax <- n_out_exp_weighted/n_pat_exp_weighted * scale_IR

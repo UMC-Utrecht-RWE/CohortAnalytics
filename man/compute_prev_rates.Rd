@@ -7,6 +7,7 @@
 compute_prev_rates(
   aesifup_input,
   eventCol = "event",
+  groupCol = "group",
   iptw = "wt",
   bootstrap,
   adjust = "adj",
@@ -19,6 +20,8 @@ compute_prev_rates(
 \item{aesifup_input}{data}
 
 \item{eventCol}{column of event 0/1}
+
+\item{groupCol}{column identifying exposed/control group}
 
 \item{iptw}{column of weight}
 
