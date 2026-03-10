@@ -27,26 +27,27 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   }
 
   # check if non-zero events in both groups, return dummy output
-
+# check if non-zero events in both groups, return dummy output
 dt <- data.table::as.data.table(aesifup_input)
 
-# Fully explicit column access (no get(), no .SD, no .())
-eventsums <- data.table::data.table(
+tmp <- data.frame(
   group_val = dt[[groupCol]],
   event_val = dt[[eventCol]]
-)[
-  ,
-  .(event_sum = sum(event_val, na.rm = TRUE)),
-  by = group_val
-]
+)
 
-data.table::setnames(eventsums, "group_val", groupCol)
+eventsums <- stats::aggregate(
+  event_val ~ group_val,
+  data = tmp,
+  FUN = function(x) sum(x, na.rm = TRUE)
+)
+
+names(eventsums) <- c(groupCol, "event_sum")
 
 if (nrow(eventsums) == 0 || !any(eventsums$event_sum > 0)) {
-    zero_groups <- paste0(as.character(eventsums[event_sum == 0][[groupCol]]), collapse = ",")
-    logger::log_info(paste0("HR model estimation fails, zero events in groups ", zero_groups))
-    return(dummy_output)
-  }
+  zero_groups <- paste0(as.character(eventsums[eventsums$event_sum == 0, groupCol]), collapse = ",")
+  logger::log_info(paste0("HR model estimation fails, zero events in groups ", zero_groups))
+  return(dummy_output)
+}
 
   # fit coxmodel
   model_formula <- as.formula(paste0("survival::Surv(", fupCol, ",", eventCol, ") ~ ", groupCol))
