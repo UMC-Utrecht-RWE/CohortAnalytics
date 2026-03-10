@@ -33,31 +33,27 @@ compute_prev_rates <- function(
     scale_IR = 1,
     estimate_survival = FALSE,
     risk_window = NULL) {
-  n_pat_exp <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", .N]
-  n_pat_con <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", .N]
-  n_out_exp <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", sum(aesifup_input[[eventCol]])]
-  n_out_con <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", sum(aesifup_input[[eventCol]])]
+  exp_data <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ]
+  con_data <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ]
+
+  n_pat_exp <- nrow(exp_data)
+  n_pat_con <- nrow(con_data)
+  n_out_exp <- sum(exp_data[[eventCol]], na.rm = TRUE)
+  n_out_con <- sum(con_data[[eventCol]], na.rm = TRUE)
+
   if (adjust == "unadj") {
     n_pat_exp_weighted <- n_pat_exp
     n_pat_con_weighted <- n_pat_con
     n_out_exp_weighted <- n_out_exp
     n_out_con_weighted <- n_out_con
   } else if (adjust == "adj") {
-    n_pat_exp_weighted <- sum(aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[iptw]], na.rm = TRUE)
-    n_pat_con_weighted <- sum(aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[iptw]], na.rm = TRUE)
-    n_out_exp_weighted <- sum(
-      aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[eventCol]] *
-        aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[iptw]],
-      na.rm = TRUE
-    )
-    n_out_con_weighted <- sum(
-      aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[eventCol]] *
-        aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[iptw]],
-      na.rm = TRUE
-    )
+    n_pat_exp_weighted <- sum(exp_data[[iptw]], na.rm = TRUE)
+    n_pat_con_weighted <- sum(con_data[[iptw]], na.rm = TRUE)
+    n_out_exp_weighted <- sum(exp_data[[eventCol]] * exp_data[[iptw]], na.rm = TRUE)
+    n_out_con_weighted <- sum(con_data[[eventCol]] * con_data[[iptw]], na.rm = TRUE)
   }
-  pp_pax <- n_out_exp_weighted / n_pat_exp_weighted * scale_IR
-  pp_comp <- n_out_con_weighted / n_pat_con_weighted * scale_IR
+  pp_pax <- as.numeric(n_out_exp_weighted) / as.numeric(n_pat_exp_weighted) * scale_IR
+  pp_comp <- as.numeric(n_out_con_weighted) / as.numeric(n_pat_con_weighted) * scale_IR
   pr <- pp_pax / pp_comp
   pd <- pp_pax - pp_comp
 
