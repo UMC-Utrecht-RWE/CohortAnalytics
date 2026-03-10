@@ -20,7 +20,7 @@
 #' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
 #' @param estimate_survival TRUE/FALSE whether to apply survival model
-#' @param survival_input list of input for fitting 1-KM model and hazard ratio
+#' @param risk_window risk window for survival analysis
 #'
 #' @export
 compute_prev_rates <- function(
@@ -32,7 +32,7 @@ compute_prev_rates <- function(
     adjust = "adj",
     scale_IR = 1,
     estimate_survival = FALSE,
-    survival_input = NULL
+    risk_window = NULL
 ) {
   n_pat_exp <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", .N]
   n_pat_con <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", .N]
@@ -64,7 +64,7 @@ compute_prev_rates <- function(
     # survival risk estimate: rr, rd, hr
     risk_table <- create_risk_table(
       aesifup = aesifup_input,
-      timepoints = survival_input$risk_window,
+      timepoints = risk_window,
       fupCol = "fup",
       eventCol = eventCol,
       use_weights = adjust == "adj",

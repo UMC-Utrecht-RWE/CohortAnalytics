@@ -8,6 +8,7 @@ estimate_HR(
   aesifup_input,
   fupCol = "fup",
   eventCol = "eventCount",
+  groupCol = "group",
   iptw = "ip_weights",
   model_type = "crude",
   return_dummy_output = FALSE,
@@ -21,6 +22,8 @@ estimate_HR(
 \item{fupCol}{column name of follow up time, to be used in survival model}
 
 \item{eventCol}{event column name}
+
+\item{groupCol}{column identifying exposed/control group}
 
 \item{iptw}{column name of inverse probability weight}
 

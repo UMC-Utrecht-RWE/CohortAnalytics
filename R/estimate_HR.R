@@ -5,6 +5,7 @@
 #' @param aesifup_input data
 #' @param fupCol column name of follow up time, to be used in survival model
 #' @param eventCol event column name
+#' @param groupCol column identifying exposed/control group
 #' @param iptw column name of inverse probability weight
 #' @param model_type weighted or crude
 #' @param return_dummy_output TRUE/FALSE whether to return a dummy output
@@ -14,6 +15,7 @@
 
 estimate_HR <- function(aesifup_input, fupCol = "fup",
                         eventCol = "eventCount",
+                        groupCol = "group",
                         iptw = "ip_weights",
                         model_type = "crude",
                         return_dummy_output = FALSE,
@@ -27,9 +29,9 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   }
 
   # check if non-zero events in both groups, return dummy output
-  eventsums <- aesifup_input[,sum(get(eventCol)), by = group]
+  eventsums <- aesifup_input[, sum(.SD[[eventCol]]), by = groupCol]
   if(!any(eventsums[,2]> 0)){
-    zero_groups <- paste0(as.character(eventsums[V1 == 0]$group), collapse = ",")
+    zero_groups <- paste0(as.character(eventsums[V1 == 0][[groupCol]]), collapse = ",")
     logger::log_info(paste0(
       "HR model estimation fails, zero events in groups ", zero_groups)
     )
@@ -37,7 +39,7 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   }
 
   # fit coxmodel
-  model_formula <- as.formula(paste0("survival::Surv(",fupCol, ",",eventCol,") ~ group"))
+  model_formula <- as.formula(paste0("survival::Surv(",fupCol, ",",eventCol,") ~ ", groupCol))
   modelobj <- fitmod_cox(model_formula, iptw = iptw,
                          model_type = model_type,aesi_name = aesi_name,aesifup_input)
 
