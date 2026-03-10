@@ -76,6 +76,7 @@ compute_prev_rates <- function(
       aesifup_input,
       fupCol = "fup",
       eventCol = eventCol,
+      groupCol = groupCol,
       iptw = iptw,
       model_type = "crude",
       return_dummy_output = FALSE,
