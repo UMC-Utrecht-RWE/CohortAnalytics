@@ -32,8 +32,7 @@ compute_prev_rates <- function(
     adjust = "adj",
     scale_IR = 1,
     estimate_survival = FALSE,
-    risk_window = NULL
-) {
+    risk_window = NULL) {
   n_pat_exp <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", .N]
   n_pat_con <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", .N]
   n_out_exp <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", sum(aesifup_input[[eventCol]])]
@@ -43,15 +42,22 @@ compute_prev_rates <- function(
     n_pat_con_weighted <- n_pat_con
     n_out_exp_weighted <- n_out_exp
     n_out_con_weighted <- n_out_con
+  } else if (adjust == "adj") {
+    n_pat_exp_weighted <- sum(aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[iptw]], na.rm = TRUE)
+    n_pat_con_weighted <- sum(aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[iptw]], na.rm = TRUE)
+    n_out_exp_weighted <- sum(
+      aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[eventCol]] *
+        aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ][[iptw]],
+      na.rm = TRUE
+    )
+    n_out_con_weighted <- sum(
+      aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[eventCol]] *
+        aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ][[iptw]],
+      na.rm = TRUE
+    )
   }
-  else if (adjust == "adj") {
-    n_pat_exp_weighted <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", sum(aesifup_input[[iptw]])]
-    n_pat_con_weighted <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", sum(aesifup_input[[iptw]])]
-    n_out_exp_weighted <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", sum(aesifup_input[[eventCol]] * aesifup_input[[iptw]])]
-    n_out_con_weighted <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", sum(aesifup_input[[eventCol]] * aesifup_input[[iptw]])]
-  }
-  pp_pax <- n_out_exp_weighted/n_pat_exp_weighted * scale_IR
-  pp_comp <- n_out_con_weighted/n_pat_con_weighted * scale_IR
+  pp_pax <- n_out_exp_weighted / n_pat_exp_weighted * scale_IR
+  pp_comp <- n_out_con_weighted / n_pat_con_weighted * scale_IR
   pr <- pp_pax / pp_comp
   pd <- pp_pax - pp_comp
 
@@ -71,7 +77,8 @@ compute_prev_rates <- function(
       iptw = iptw,
       scale_IR = scale_IR,
       comparison_measures = TRUE,
-      dummy_code = NA)
+      dummy_code = NA
+    )
     hr_table <- estimate_HR(
       aesifup_input,
       fupCol = "fup",
@@ -81,7 +88,8 @@ compute_prev_rates <- function(
       model_type = "crude",
       return_dummy_output = FALSE,
       aesi_name = "",
-      dummy_code = NA)
+      dummy_code = NA
+    )
     survival_output_list <- list(
       rr = risk_table$cuminc_est_exp / risk_table$cuminc_est_con,
       rd = risk_table$cuminc_est_exp - risk_table$cuminc_est_con,
@@ -90,24 +98,30 @@ compute_prev_rates <- function(
   }
 
   # bootstrap CI estimate
-  if (is.null(bootstrap))
-    return(data.table(n_pat_exp, n_pat_con, n_out_exp, n_out_con,
-                      pp_pax, pp_comp, pr, pd, do.call(cbind, survival_output_list)))
-  else{
+  if (is.null(bootstrap)) {
+    return(data.table(
+      n_pat_exp, n_pat_con, n_out_exp, n_out_con,
+      pp_pax, pp_comp, pr, pd, do.call(cbind, survival_output_list)
+    ))
+  } else {
     boot_ci_list <- list()
     for (prev_suffix in boot_cols) {
       boot_col_name <- paste0(prev_suffix, "_", adjust)
-      boot_vec <- bootstrap[, get(boot_col_name)]
+      boot_vec <- bootstrap[[boot_col_name]]
       boot_ci_list[[prev_suffix]] <- est_inc_prev(
         scale_IR = 1,
         type = "prevalence",
         CImethod = "bootstrap",
-        boot_vec = boot_vec)[
-          , .(ir_lb, ir_ub)]
+        boot_vec = boot_vec
+      )[
+        , .(ir_lb, ir_ub)
+      ]
     }
-    return(data.table(n_pat_exp, n_pat_con, n_out_exp, n_out_con,
-                      pp_pax, pp_comp, pr, pd,
-                      do.call(cbind, survival_output_list),
-                      do.call(cbind, boot_ci_list)))
+    return(data.table(
+      n_pat_exp, n_pat_con, n_out_exp, n_out_con,
+      pp_pax, pp_comp, pr, pd,
+      do.call(cbind, survival_output_list),
+      do.call(cbind, boot_ci_list)
+    ))
   }
 }
