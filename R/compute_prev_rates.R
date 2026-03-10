@@ -36,8 +36,8 @@ compute_prev_rates <- function(
 ) {
   n_pat_exp <- aesifup_input[get(groupCol) == "EXPOSED", .N]
   n_pat_con <- aesifup_input[get(groupCol) == "CONTROL", .N]
-  n_out_exp <- aesifup_input[get(groupCol) == "EXPOSED", sum(.SD[[eventCol]])]
-  n_out_con <- aesifup_input[get(groupCol) == "CONTROL", sum(.SD[[eventCol]])]
+  n_out_exp <- aesifup_input[get(groupCol) == "EXPOSED", sum(get(eventCol))]
+  n_out_con <- aesifup_input[get(groupCol) == "CONTROL", sum(get(eventCol))]
   if (adjust == "unadj") {
     n_pat_exp_weighted <- n_pat_exp
     n_pat_con_weighted <- n_pat_con
@@ -45,12 +45,10 @@ compute_prev_rates <- function(
     n_out_con_weighted <- n_out_con
   }
   else if (adjust == "adj") {
-    n_pat_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(wt)]
-    n_pat_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(wt)]
-    n_out_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(.SD[[eventCol]] *
-                                                                  wt)]
-    n_out_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(.SD[[eventCol]] *
-                                                                  wt)]
+    n_pat_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(get(iptw))]
+    n_pat_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(get(iptw))]
+    n_out_exp_weighted <- aesifup_input[get(groupCol) == "EXPOSED", sum(get(eventCol) * get(iptw))]
+    n_out_con_weighted <- aesifup_input[get(groupCol) == "CONTROL", sum(get(eventCol) * get(iptw))]
   }
   pp_pax <- n_out_exp_weighted/n_pat_exp_weighted * scale_IR
   pp_comp <- n_out_con_weighted/n_pat_con_weighted * scale_IR
