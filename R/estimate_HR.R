@@ -29,12 +29,12 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   }
 
   # check if non-zero events in both groups, return dummy output
-  eventsums <- aesifup_input[, sum(.SD[[eventCol]]), by = groupCol]
-  if(!any(eventsums[,2]> 0)){
-    zero_groups <- paste0(as.character(eventsums[V1 == 0][[groupCol]]), collapse = ",")
-    logger::log_info(paste0(
-      "HR model estimation fails, zero events in groups ", zero_groups)
-    )
+ 
+  eventsums <- aesifup_input[, .(event_sum = sum(get(eventCol), na.rm = TRUE)), by = ..groupCol]
+
+  if (nrow(eventsums) == 0 || !any(eventsums$event_sum > 0)) {
+    zero_groups <- paste0(as.character(eventsums[event_sum == 0][[groupCol]]), collapse = ",")
+    logger::log_info(paste0("HR model estimation fails, zero events in groups ", zero_groups))
     return(dummy_output)
   }
 
