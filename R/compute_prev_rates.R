@@ -20,7 +20,7 @@
 #' @param bootstrap bootstrap result to calculate CI
 #' @param adjust either 'adj' adjusted or 'unadj' unadjusted by iptw
 #' @param estimate_survival TRUE/FALSE whether to apply survival model
-#' @param risk_window risk window for survival analysis
+#' @param fupCol column name with follow up time, to be used in survival model
 #'
 #' @export
 compute_prev_rates <- function(
@@ -32,7 +32,7 @@ compute_prev_rates <- function(
     adjust = "adj",
     scale_IR = 1,
     estimate_survival = FALSE,
-    risk_window = NULL) {
+    fupCol) {
   exp_data <- aesifup_input[aesifup_input[[groupCol]] == "EXPOSED", ]
   con_data <- aesifup_input[aesifup_input[[groupCol]] == "CONTROL", ]
 
@@ -63,11 +63,12 @@ compute_prev_rates <- function(
     survival_output_list <- list()
   } else {
     boot_cols <- c("rr", "rd", "hr")
+    timepoints <- min(max(exp_data[[fupCol]]), max(con_data[[fupCol]]))
     # survival risk estimate: rr, rd, hr
     risk_table <- create_risk_table(
       aesifup = aesifup_input,
-      timepoints = risk_window,
-      fupCol = "fup",
+      timepoints = timepoints,
+      fupCol,
       eventCol = eventCol,
       use_weights = adjust == "adj",
       iptw = iptw,
@@ -77,7 +78,7 @@ compute_prev_rates <- function(
     )
     hr_table <- estimate_HR(
       aesifup_input,
-      fupCol = "fup",
+      fupCol,
       eventCol = eventCol,
       groupCol = groupCol,
       iptw = iptw,
