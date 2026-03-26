@@ -82,7 +82,7 @@ compute_prev_rates <- function(
       eventCol = eventCol,
       groupCol = groupCol,
       iptw = iptw,
-      model_type = "crude",
+      model_type = ifelse(adjust == "adj", "weighted", "crude"),
       return_dummy_output = FALSE,
       aesi_name = "",
       dummy_code = NA
