@@ -10,15 +10,14 @@ fitmod_cox <- function(model_formula, iptw = "ip_weights",
         ))
       }
       if (model_type == "adj") {
-        w <- aesifup_input[[iptw]]
-        pid <- aesifup_input[["person_id"]]
+        aesifup_input$w <- aesifup_input[[iptw]]
 
         return(survival::coxph(
           model_formula,
           data = aesifup_input,
           robust = TRUE,
-          id = pid,
-          cluster = pid,
+          id = person_id,
+          cluster = person_id,
           weights = w
         ))
       }
