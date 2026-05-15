@@ -2,7 +2,7 @@
 % Please edit documentation in R/est_inc_prev.R
 \name{est_inc_prev}
 \alias{est_inc_prev}
-\title{Title}
+\title{Estimate incidence rates or prevalence rates}
 \usage{
 est_inc_prev(
   n_pat,
@@ -10,7 +10,8 @@ est_inc_prev(
   py = NULL,
   scale_IR,
   type = "incidence",
-  CImethod = NULL
+  CImethod = NULL,
+  boot_vec = NULL
 )
 }
 \arguments{
@@ -24,8 +25,10 @@ est_inc_prev(
 
 \item{type}{"incidence" or "prevalence"}
 
-\item{CImethod}{"wilson" or "clopper" based estimation of CIs}
+\item{CImethod}{"wilson" or "clopper" or "bootstrap" or NULL}
+
+\item{boot_vec}{vector of bootstrap result to pass to CImethod = "bootstrap"}
 }
 \description{
-Title
+Estimate incidence rates or prevalence rates
 }

@@ -57,6 +57,8 @@ compute_rates_cohort(
 
 \item{weighted_IR}{use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)}
 
+\item{end_risk}{end of risk period for computing cumulative incidence}
+
 \item{output_format}{defaults to \code{data.table}, otherwise returns data.frame.}
 
 \item{minimum_count_for_comparative}{defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed}
