@@ -20,14 +20,15 @@ est_inc_prev <- function(
     scale_IR,
     type = "incidence",
     CImethod = NULL,
-    boot_vec = NULL){
+    boot_vec = NULL,
+    py_zero_code = -88){
   #CImethod required for prevalence CIs
   # n_pat = n_pat_exp
   # n_out = n_out_exp
   # py = py_exp
   # scale_IR = scale_IR
   # type = type
-
+  if(py == 0){ return(data.frame(ir = py_zero_code,lb_ir = py_zero_code, ub_ir = py_zero_code)) }
   if(type == "incidence"){
     if(is.null(py)){stop("for incidence calculation, py must be non-NULL")}
     # incidence CI using dobson formula
