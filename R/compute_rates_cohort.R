@@ -79,16 +79,22 @@ compute_rates_cohort <- function(aesifup_input,
   # }
   #====================================   COUNTS    =======================================#
   #===== SUM PER GROUP
-  n_pat_exp <- aesifup_input[aesifup_input$group == "EXPOSED", .N]
-  n_pat_con <- aesifup_input[aesifup_input$group == "CONTROL", .N]
+  # Base-R subsetting avoids data.table j-expression scoping issues when the
+  # function is called from the package namespace (pyrCol / eventCol are local
+  # variables that data.table cannot reliably resolve inside j with .SD[[]]).
+  .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
+  .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
+
+  n_pat_exp <- nrow(.exp_rows)
+  n_pat_con <- nrow(.con_rows)
 
   # sum outcomes
-  n_out_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[eventCol]])]
-  n_out_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[eventCol]])]
+  n_out_exp <- sum(.exp_rows[[eventCol]], na.rm = TRUE)
+  n_out_con <- sum(.con_rows[[eventCol]], na.rm = TRUE)
 
   # person-years
-  py_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[pyrCol]])]
-  py_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[pyrCol]])]
+  py_exp <- sum(.exp_rows[[pyrCol]], na.rm = TRUE)
+  py_con <- sum(.con_rows[[pyrCol]], na.rm = TRUE)
 
   #==================================  INCIDENCE RATES   ==================================#
   # create appropriate model type depending on desired estimand (incidence/prevalence)
@@ -255,7 +261,7 @@ compute_rates_cohort <- function(aesifup_input,
     #  ------------- for survival-type outcomes, calculate ---------------
     # Hazard Ratios (matched and adjusted)
     # Risk Differences based on cumulative incidence differences
-    if(nrow(aesifup) == 0){
+    if(nrow(aesifup_input) == 0){
       #ratio
       rr_list <- data.frame(rr_est_crude = -99,
                             rr_lb_crude = -99,
@@ -308,8 +314,8 @@ compute_rates_cohort <- function(aesifup_input,
         }
         #----------difference
         # risk difference - take difference in risks
-        rd_est_crude <- cuminc_ests_crude$cuminc_est_exp - cuminc_ests_crude$cuminc_est_con
-        rd_est_adj <- cuminc_ests_adj$cuminc_est_exp  - cuminc_ests_adj$cuminc_est_con
+        rd_est_crude <- cuminc_ests_crude$cuminc_est_exp_crude - cuminc_ests_crude$cuminc_est_con_crude
+        rd_est_adj <- cuminc_ests_adj$cuminc_est_exp_adj  - cuminc_ests_adj$cuminc_est_con_adj
 
         if(is.na(rd_est_crude)) rd_est_crude <- -88
         if(is.na(rd_est_adj)) rd_est_adj <- -88
@@ -344,7 +350,38 @@ compute_rates_cohort <- function(aesifup_input,
                                       rd_type = "km")
 
 
-      } else if(risk_type != "survival"){
+      } else if(risk_type == "logbinomial") { #--------------------------- LOG-BINOMIAL
+        # Log-binomial GLM: directly estimates cumulative risk ratios.
+        # Uses base-R glm() — no extra package required.
+        model_formula_rr <- as.formula(paste0(eventCol, " ~ group"))
+
+        crude_lb <- fitmod_logbin(model_formula_rr, model_type = "crude",
+                                  iptw = iptw, aesi_name = target_aesi,
+                                  aesifup_input = aesifup_input)
+        adj_lb   <- fitmod_logbin(model_formula_rr, model_type = "adj",
+                                  iptw = iptw, aesi_name = target_aesi,
+                                  aesifup_input = aesifup_input)
+
+        if (!is.null(minimum_count_for_comparative)) {
+          if (n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative) {
+            crude_lb <- "insufficient events"
+            adj_lb   <- "insufficient events"
+          }
+        }
+
+        ests_crude_lb <- extract_ests_logbin(crude_lb)
+        ests_adj_lb   <- extract_ests_logbin(adj_lb)
+        colnames(ests_crude_lb) <- paste0(colnames(ests_crude_lb), "_crude")
+        colnames(ests_adj_lb)   <- paste0(colnames(ests_adj_lb),   "_adj")
+
+        rr_list <- data.frame(ests_crude_lb, ests_adj_lb)
+        rd_list <- data.frame(rd_est_crude = -88, rd_lb_crude = -88, rd_ub_crude = -88,
+                              rd_est_adj   = -88, rd_lb_adj   = -88, rd_ub_adj   = -88)
+        risk_ratio_diff <- data.frame(rr_list, rd_list,
+                                      rr_type = "logbinomial",
+                                      rd_type = "logbinomial")
+
+      } else if(risk_type != "survival") { #--------------------------- GEE (INCIDENCE/PREVALENCE)
         # ------- For non-survival type outcomes (incidence/prevalence) -------------
         # compute incidence rate or prevalence proportion ratio
         # compute incidence rate or prevalence proportion difference
@@ -383,7 +420,7 @@ compute_rates_cohort <- function(aesifup_input,
         colnames(risk_ratio_diff) <- gsub("ird", "rd", colnames(risk_ratio_diff))
 
       }
-    } # close if(nrow(aesifup) == 0)
+    } # close if(nrow(aesifup_input) == 0)
 
     #===================================   COMBINE ALL   ======================================#
     #  ------ collect base information in a data.frame -----
