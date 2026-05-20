@@ -78,16 +78,22 @@ compute_rates_cohort <- function(aesifup_input,
   # }
   # ====================================   COUNTS    =======================================#
   # ===== SUM PER GROUP
-  n_pat_exp <- aesifup_input[aesifup_input$group == "EXPOSED", .N]
-  n_pat_con <- aesifup_input[aesifup_input$group == "CONTROL", .N]
+  # Base-R subsetting avoids data.table j-expression scoping issues when the
+  # function is called from the package namespace (pyrCol / eventCol are local
+  # variables that data.table cannot reliably resolve inside j with .SD[[]]).
+  .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
+  .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
+
+  n_pat_exp <- nrow(.exp_rows)
+  n_pat_con <- nrow(.con_rows)
 
   # sum outcomes
-  n_out_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[eventCol]])]
-  n_out_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[eventCol]])]
+  n_out_exp <- sum(.exp_rows[[eventCol]], na.rm = TRUE)
+  n_out_con <- sum(.con_rows[[eventCol]], na.rm = TRUE)
 
   # person-years
-  py_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[pyrCol]])]
-  py_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[pyrCol]])]
+  py_exp <- sum(.exp_rows[[pyrCol]], na.rm = TRUE)
+  py_con <- sum(.con_rows[[pyrCol]], na.rm = TRUE)
 
   # ==================================  INCIDENCE RATES   ==================================#
   # create appropriate model type depending on desired estimand (incidence/prevalence)
