@@ -90,11 +90,11 @@ compute_rates_cohort <- function(aesifup_input,
   # If unique_person_cols is not null, count unique patients, otherwise count
   # rows (for example, if the data is already aggregated to person-level)
   if (!is.null(unique_person_cols)) {
-    if (unique(unique_person_cols %in% colnames(aesifup_input)) != TRUE) {
+    if (!all(unique_person_cols %in% colnames(aesifup_input))) {
       stop("Error: unique_person_cols specified but not all columns found in aesifup_input")
     }
-    n_pat_exp <- data.table::uniqueN(.exp_rows[[unique_person_cols]])
-    n_pat_con <- data.table::uniqueN(.con_rows[[unique_person_cols]])
+    n_pat_exp <- nrow(unique(as.data.frame(.exp_rows)[, unique_person_cols, drop = FALSE]))
+    n_pat_con <- nrow(unique(as.data.frame(.con_rows)[, unique_person_cols, drop = FALSE]))
   } else {
     n_pat_exp <- nrow(.exp_rows)
     n_pat_con <- nrow(.con_rows)
