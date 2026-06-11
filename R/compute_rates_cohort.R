@@ -33,6 +33,7 @@
 #' @param end_risk end of risk period for computing cumulative incidence
 #' @param output_format defaults to `data.table`, otherwise returns data.frame.
 #' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed
+#' @param unique_person_cols optional character vector of column names to be used to identify unique patients in the dataset. If not specified, counts of patients will be based on number of rows in the dataset. If specified, counts of patients will be based on number of unique combinations of values in these columns.
 #'
 #' @export
 compute_rates_cohort <- function(aesifup_input,
@@ -52,7 +53,8 @@ compute_rates_cohort <- function(aesifup_input,
                                  weighted_IR = FALSE,
                                  end_risk,
                                  output_format = "data.table",
-                                 minimum_count_for_comparative = 3) {
+                                 minimum_count_for_comparative = 3,
+                                 unique_person_cols = NULL) {
   # aesifup_input = aesifup_input_tmp
   # # global settings
   # fupCol
@@ -81,11 +83,22 @@ compute_rates_cohort <- function(aesifup_input,
   # Base-R subsetting avoids data.table j-expression scoping issues when the
   # function is called from the package namespace (pyrCol / eventCol are local
   # variables that data.table cannot reliably resolve inside j with .SD[[]]).
+
   .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
   .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
 
-  n_pat_exp <- nrow(.exp_rows)
-  n_pat_con <- nrow(.con_rows)
+  # If unique_person_cols is not null, count unique patients, otherwise count
+  # rows (for example, if the data is already aggregated to person-level)
+  if (!is.null(unique_person_cols)) {
+    if (unique(unique_person_cols %in% colnames(aesifup_input)) != TRUE) {
+      stop("Error: unique_person_cols specified but not all columns found in aesifup_input")
+    }
+    n_pat_exp <- data.table::uniqueN(.exp_rows[[unique_person_cols]])
+    n_pat_con <- data.table::uniqueN(.con_rows[[unique_person_cols]])
+  } else {
+    n_pat_exp <- nrow(.exp_rows)
+    n_pat_con <- nrow(.con_rows)
+  }
 
   # sum outcomes
   n_out_exp <- sum(.exp_rows[[eventCol]], na.rm = TRUE)
