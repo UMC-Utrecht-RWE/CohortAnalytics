@@ -443,7 +443,7 @@ compute_rates_cohort <- function(aesifup_input,
     )
   } # close if(comparison_measures)
   if(output_format == "data.table") {
-    return(as.data.table(ests_out))
+    return(data.table::as.data.table(ests_out))
   } else {
     # return a list with three objects to be combined later
     return(ests_out)

@@ -80,7 +80,7 @@ est_inc_prev <- function(
     }
   }
 
-  return(data.table(ir_est = ir*scale_IR, ir_lb = lb_ir*scale_IR, ir_ub = ub_ir*scale_IR))
+  return(data.table::data.table(ir_est = ir*scale_IR, ir_lb = lb_ir*scale_IR, ir_ub = ub_ir*scale_IR))
 }
 
 
