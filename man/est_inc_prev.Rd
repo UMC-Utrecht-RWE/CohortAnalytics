@@ -11,7 +11,8 @@ est_inc_prev(
   scale_IR,
   type = "incidence",
   CImethod = NULL,
-  boot_vec = NULL
+  boot_vec = NULL,
+  py_zero_code = -88
 )
 }
 \arguments{

@@ -23,7 +23,8 @@ compute_rates_cohort(
   weighted_IR = FALSE,
   end_risk,
   output_format = "data.table",
-  minimum_count_for_comparative = 3
+  minimum_count_for_comparative = 3,
+  unique_person_cols = NULL
 )
 }
 \arguments{
@@ -62,6 +63,8 @@ compute_rates_cohort(
 \item{output_format}{defaults to \code{data.table}, otherwise returns data.frame.}
 
 \item{minimum_count_for_comparative}{defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed}
+
+\item{unique_person_cols}{optional character vector of column names to be used to identify unique patients in the dataset. If not specified, counts of patients will be based on number of rows in the dataset. If specified, counts of patients will be based on number of unique combinations of values in these columns.}
 }
 \description{
 Wrapper function to compute statistics relating to incidence, prevalences and risks (ratios and differences)

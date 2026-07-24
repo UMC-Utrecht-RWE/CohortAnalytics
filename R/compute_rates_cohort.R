@@ -389,6 +389,43 @@ compute_rates_cohort <- function(aesifup_input,
           rr_type = "hazard",
           rd_type = "km"
         )
+      } else if (risk_type == "logbinomial") { #--------------------------- LOG-BINOMIAL
+        # Log-binomial GLM: directly estimates cumulative risk ratios.
+        # Uses base-R glm() — no extra package required.
+        model_formula_rr <- as.formula(paste0(eventCol, " ~ group"))
+
+        crude_lb <- fitmod_logbin(model_formula_rr,
+          model_type = "crude",
+          iptw = iptw, aesi_name = target_aesi,
+          aesifup_input = aesifup_input
+        )
+        adj_lb <- fitmod_logbin(model_formula_rr,
+          model_type = "adj",
+          iptw = iptw, aesi_name = target_aesi,
+          aesifup_input = aesifup_input
+        )
+
+        if (!is.null(minimum_count_for_comparative)) {
+          if (n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative) {
+            crude_lb <- "insufficient events"
+            adj_lb <- "insufficient events"
+          }
+        }
+
+        ests_crude_lb <- extract_ests_logbin(crude_lb)
+        ests_adj_lb <- extract_ests_logbin(adj_lb)
+        colnames(ests_crude_lb) <- paste0(colnames(ests_crude_lb), "_crude")
+        colnames(ests_adj_lb) <- paste0(colnames(ests_adj_lb), "_adj")
+
+        rr_list <- data.frame(ests_crude_lb, ests_adj_lb)
+        rd_list <- data.frame(
+          rd_est_crude = -88, rd_lb_crude = -88, rd_ub_crude = -88,
+          rd_est_adj = -88, rd_lb_adj = -88, rd_ub_adj = -88
+        )
+        risk_ratio_diff <- data.frame(rr_list, rd_list,
+          rr_type = "logbinomial",
+          rd_type = "logbinomial"
+        )
       } else if (risk_type != "survival") {
         # ------- For non-survival type outcomes (incidence/prevalence) -------------
         # compute incidence rate or prevalence proportion ratio
@@ -451,7 +488,7 @@ compute_rates_cohort <- function(aesifup_input,
     )
   } # close if(comparison_measures)
   if (output_format == "data.table") {
-    return(as.data.table(ests_out))
+    return(data.table::as.data.table(ests_out))
   } else {
     # return a list with three objects to be combined later
     return(ests_out)
