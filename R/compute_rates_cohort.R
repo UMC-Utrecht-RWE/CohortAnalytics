@@ -313,6 +313,8 @@ compute_rates_cohort <- function(aesifup_input,
     } else {
       if (risk_type == "survival") { #--------------------------- SURVIVAL
         #---------ratio
+        print("Computing risk ratios and differences using hazard ratios and 1-KM cumulative incidence")
+
         if (n_out_con == 0 | n_out_exp == 0) {
           rr_list <- data.frame(
             rr_est_crude = -88,
@@ -391,6 +393,8 @@ compute_rates_cohort <- function(aesifup_input,
         )
       } else if (risk_type == "logbinomial") { #--------------------------- LOG-BINOMIAL
         # Log-binomial GLM: directly estimates cumulative risk ratios.
+        print("Computing risk ratios and differences using log-binomial models")
+
         # Uses base-R glm() — no extra package required.
         model_formula_rr <- as.formula(paste0(eventCol, " ~ group"))
 
@@ -430,6 +434,7 @@ compute_rates_cohort <- function(aesifup_input,
         # ------- For non-survival type outcomes (incidence/prevalence) -------------
         # compute incidence rate or prevalence proportion ratio
         # compute incidence rate or prevalence proportion difference
+        print("Computing incidence/prevalence ratios and differences using GEE models")
 
         # use internal function defined below
         # this function either processes the model, or returns dummy output if model input is character string
