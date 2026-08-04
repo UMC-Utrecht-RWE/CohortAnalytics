@@ -24,6 +24,27 @@ fitmod_logbin <- function(model_formula,
   # Use withCallingHandlers for warnings so glm() can complete even when it
   # emits a convergence warning (common with binomial/log link + weights).
   # tryCatch is reserved for hard errors only.
+  .retry_with_start <- function(df, glm_args) {
+    start_args <- list(
+      formula = glm_args$formula,
+      family = stats::poisson(link = "log"),
+      data = df
+    )
+    if (!is.null(glm_args$weights)) {
+      start_args$weights <- glm_args$weights
+    }
+
+    start_fit <- tryCatch(do.call(stats::glm, start_args), error = function(e) NULL)
+    if (!is.null(start_fit)) {
+      start_coef <- stats::coef(start_fit)
+      if (length(start_coef) > 0 && all(is.finite(start_coef))) {
+        glm_args$start <- start_coef
+      }
+    }
+
+    do.call(stats::glm, glm_args)
+  }
+
   tryCatch({
     withCallingHandlers({
       df <- as.data.frame(aesifup_input)
@@ -47,7 +68,15 @@ fitmod_logbin <- function(model_formula,
         glm_args$weights <- df[[".wt"]]
       }
 
-      do.call(stats::glm, glm_args)
+      tryCatch(
+        do.call(stats::glm, glm_args),
+        error = function(cond) {
+          tryCatch(
+            .retry_with_start(df, glm_args),
+            error = function(e) stop(cond)
+          )
+        }
+      )
     },
     warning = function(w) {
       logger::log_info(paste("Log-binomial warning for", model_type,

@@ -57,8 +57,8 @@ defaults to "gee"; set to "logbinomial" to use \code{fitmod_logbin} with
 \item{CImethod}{defaults to "wilson"; option passed to \code{est_inc_prev} defining formula for analytic CI computation}
 
 \item{risk_type}{defaults "survival". If set to "survival", function outputs
-1-KM risk differences and hazard ratios. Otherwise prevalence/incidence ratios
-and differences are estimated from GEE models.}
+1-KM risk differences and hazard ratios. Otherwise prevalence/incidence
+ratios and differences are estimated from GEE models.}
 
 \item{CumulativeInc}{TRUE/FALSE, compute cumulative incidences using 1-KM. If not, skip and return -99 flag}
 
