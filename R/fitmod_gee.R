@@ -1,15 +1,18 @@
 # internal function to wrangle geeM:geem() model fiting
 # fits the conditional poisson model; if error or warning, returns string
 # relies on availability of iptw column, variable names, person_id_num, aesifup in environment, etc.
-fitmod_gee <- function(model_formula, iptw = "iptw", model_type = NULL,aesi_name = NULL,aesifup_input, ...){
+fitmod_gee <- function(model_formula, iptw = "iptw", model_type = NULL,
+                       aesi_name = NULL, aesifup_input, ...){
   tryCatch({
+    id_vec <- aesifup_input[["person_id_num"]]
+
     if(model_type == "crude"){
       return(geeM::geem(formula = model_formula, data = aesifup_input, family = "poisson",
-                        id = person_id_num))
+                        id = id_vec))
     }
     if(model_type == "adj"){
       return(geeM::geem(formula = model_formula, data = aesifup_input, family = "poisson",
-                        id = person_id_num, weights = aesifup_input[[iptw]]))
+                        id = id_vec, weights = aesifup_input[[iptw]]))
     }
   },
   error = function(cond){

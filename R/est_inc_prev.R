@@ -89,20 +89,33 @@ est_inc_prev <- function(
 est_inc_prev_model <- function(modelobj, group, scale_IR){
   if(is.character(modelobj)){ return(data.frame(ir_est = -88,ir_lb = -88, ir_ub = -88)) }
 
-  model_summary <- summary(modelobj)
-  int_par <- model_summary$beta[1]
-  int_se <- model_summary$se.robust[1]
-  group_par <- model_summary$beta[2]
-  group_se <-  model_summary$se.robust[2]
+  coef_vec <- tryCatch(stats::coef(modelobj), error = function(e) NULL)
+  if (is.null(coef_vec)) {
+    return(data.frame(ir_est = -88, ir_lb = -88, ir_ub = -88))
+  }
+
+  int_idx <- which(names(coef_vec) == "(Intercept)")
+  if (length(int_idx) == 0) {
+    int_idx <- 1
+  }
+  int_idx <- int_idx[1]
+
+  vcov_mat <- tryCatch(stats::vcov(modelobj), error = function(e) NULL)
+  if (is.null(vcov_mat) && !is.null(modelobj$var)) {
+    vcov_mat <- modelobj$var
+  }
+  if (is.null(vcov_mat)) {
+    return(data.frame(ir_est = -88, ir_lb = -88, ir_ub = -88))
+  }
+
+  int_par <- coef_vec[int_idx]
+  int_se <- sqrt(vcov_mat[int_idx, int_idx])
 
   # collect parameters
-  if(group == "CONTROL"){
-    ir <- exp(int_par)
-    lb_ir <- exp(int_par + qnorm(0.025)*int_se)
-    ub_ir <- exp(int_par + qnorm(0.975)*int_se)
-  }else{
-    stop("current implementation only for control group")
-  }
+  # For one-group model fits, the intercept is the group-specific estimate.
+  ir <- exp(int_par)
+  lb_ir <- exp(int_par + qnorm(0.025)*int_se)
+  ub_ir <- exp(int_par + qnorm(0.975)*int_se)
 
   return(data.frame(ir_est = ir*scale_IR,
                     ir_lb = lb_ir*scale_IR,

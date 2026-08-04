@@ -21,10 +21,17 @@
 #' @param pyr_offset name of column which is used as input to poisson (GEE) models if necessary, typically person-time. "pyr_offset"
 #' @param eventCol name column identifying binary event count for this unit, "eventCount"
 #' @param iptw name column containing (ipt or other) weights to be used in the analysis
+#' @param idCol name of person identifier column used for clustered models. defaults to "person_id_num"
+#' @param timeVar optional name of time index column for time-varying models
+#' @param incidence_model comparative model for non-survival incidence analyses.
+#'   defaults to "gee"; set to "logbinomial" to use `fitmod_logbin` with
+#'   `extract_ests_logbin`, or to "timevarying" to use `fitmod_gee_tv`.
 #' @param target_aesi character string giving name of the outcome variable, for informative logging
 #' @param type "incidence" or "prevalence", defining if incidence rates or prevalenes are to be computed
 #' @param CImethod defaults to "wilson"; option passed to `est_inc_prev` defining formula for analytic CI computation
-#' @param risk_type defaults "survival". if set to survival, function outputs 1-KM risk differences and ratios. Otherwise prevalence/incidence ratios and differences, as specified by `type`
+#' @param risk_type defaults "survival". If set to "survival", function outputs
+#'   1-KM risk differences and hazard ratios. Otherwise prevalence/incidence
+#'   ratios and differences are estimated from GEE models.
 #' @param CumulativeInc TRUE/FALSE, compute cumulative incidences using 1-KM. If not, skip and return -99 flag
 #' @param comparison_measures controls whether 1-KM is based on the latest available follow-up in both exposed and control (TRUE) or just the maximum follow-up in the dataset as a whole (FALSE)
 #' @param scale_IR what scaling to perform for incidence/prevalence, i.e., events per X. Defaults to 10000
@@ -41,6 +48,9 @@ compute_rates_cohort <- function(aesifup_input,
                                  pyr_offset = "pyr_offset",
                                  eventCol = "eventCount",
                                  iptw = "ip_weight",
+                                 idCol = "person_id_num",
+                                 timeVar = NULL,
+                                 incidence_model = "gee",
                                  target_aesi,
                                  type = "incidence",
                                  CImethod = "wilson",
@@ -104,29 +114,92 @@ compute_rates_cohort <- function(aesifup_input,
   model_formula <- as.formula(paste0(eventCol, " ~ group + offset(",pyr_offset,")"))
   model_formula_no_group <- as.formula(paste0(eventCol, " ~ offset(",pyr_offset,")"))
 
+  use_logbin <- (risk_type != "survival" && type == "incidence" && incidence_model == "logbinomial")
+  use_timevarying <- (risk_type != "survival" && type == "incidence" && incidence_model == "timevarying")
+
+  # optional time-varying comparative model (binomial-log GEE)
+  if (use_timevarying) {
+    if (is.null(timeVar) || !(timeVar %in% names(aesifup_input))) {
+      stop("When incidence_model = 'timevarying', provide a valid timeVar column name")
+    }
+    model_formula_tv <- as.formula(paste0(eventCol, " ~ group + ", timeVar))
+    model_formula_no_group_tv <- as.formula(paste0(eventCol, " ~ ", timeVar))
+  }
+
   # Fit crude and adjusted models to extract incidence/prevalence rate in each group
   # relies on internal function defined below in this script
   # if valid fit, returns fit object
   # if not, returns character string, prints to log
   # aesifup must have person_id_num, iptw for adjusted model
-  model_crude <- fitmod_gee(model_formula, model_type = "crude", aesi_name = target_aesi,
+  if (use_timevarying) {
+    model_crude <- fitmod_gee_tv(model_formula_tv,
+                                 model_type = "crude",
+                                 idCol = idCol,
+                                 aesi_name = target_aesi,
+                                 aesifup_input = aesifup_input)
+    model_adj <- fitmod_gee_tv(model_formula_tv,
+                               model_type = "adj",
+                               iptw = iptw,
+                               idCol = idCol,
+                               aesi_name = target_aesi,
+                               aesifup_input = aesifup_input)
+  } else if (use_logbin) {
+    model_crude <- fitmod_logbin(model_formula,
+                                 model_type = "crude",
+                                 iptw = iptw,
+                                 aesi_name = target_aesi,
+                                 aesifup_input = aesifup_input)
+    model_adj <- fitmod_logbin(model_formula,
+                               model_type = "adj",
+                               iptw = iptw,
+                               aesi_name = target_aesi,
+                               aesifup_input = aesifup_input)
+  } else {
+    model_crude <- fitmod_gee(model_formula,
+                              model_type = "crude",
+                              aesi_name = target_aesi,
+                              aesifup_input = aesifup_input)
+    model_adj <- fitmod_gee(model_formula,
+                            model_type = "adj",
+                            iptw = iptw,
+                            aesi_name = target_aesi,
                             aesifup_input = aesifup_input)
-  model_adj <- fitmod_gee(model_formula, model_type = "adj", iptw = iptw, aesi_name = target_aesi,
-                          aesifup_input = aesifup_input)
+  }
   # estimate prevalence ratios and
 
   # ---- incidence rate / prevalence proportion statistics -----
   # incidence rates /prevalence proportiona and CI
   # computed analytically or with help of a model (clustering)
 
+  # helper for fitting one-group models used in model-based IR estimation
+  .fit_group_model <- function(group_name, model_type) {
+    group_data <- aesifup_input[aesifup_input$group == group_name, ]
+    if (use_timevarying) {
+      fitmod_gee_tv(model_formula_no_group_tv,
+                    model_type = model_type,
+                    iptw = iptw,
+                    idCol = idCol,
+                    aesi_name = target_aesi,
+                    aesifup_input = group_data)
+    } else if (use_logbin) {
+      fitmod_logbin(model_formula_no_group,
+                    model_type = model_type,
+                    iptw = iptw,
+                    aesi_name = target_aesi,
+                    aesifup_input = group_data)
+    } else {
+      fitmod_gee(model_formula_no_group,
+                 model_type = model_type,
+                 iptw = iptw,
+                 aesi_name = target_aesi,
+                 aesifup_input = group_data)
+    }
+  }
+
   # compute rates for EXPOSED
   # if weighted IR requested, always use model based IR for exposed
   if(weighted_IR == TRUE){
-    model_adj_exposed <- fitmod_gee(model_formula_no_group,
-                                    model_type = "adj",
-                                    iptw = iptw,
-                                    aesi_name = target_aesi,
-                                    aesifup_input = aesifup_input[aesifup_input$group == "EXPOSED", ])
+    model_adj_exposed <- .fit_group_model(group_name = "EXPOSED", model_type = "adj")
     ir_list_exp <- est_inc_prev_model(model_adj_exposed, group = "EXPOSED", scale_IR = scale_IR)
 
   } else {
@@ -135,20 +208,9 @@ compute_rates_cohort <- function(aesifup_input,
 
   # compute rates for CONTROL
   if(model_based_control){
-    if(weighted_IR == TRUE){
-      model_adj_control <- fitmod_gee(model_formula_no_group,
-                                      model_type = "adj",
-                                      iptw = iptw,
-                                      aesi_name = target_aesi,
-                                      aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ])
-      ir_list_con <- est_inc_prev_model(model_adj_control, group = "CONTROL", scale_IR = scale_IR)
-    }else{
-      model_crude_control <- fitmod_gee(model_formula_no_group,
-                                        model_type = "crude",
-                                        aesi_name = target_aesi,
-                                        aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ])
-      ir_list_con <- est_inc_prev_model(model_crude_control,group = "CONTROL", scale_IR = scale_IR)
-    }
+    control_model_type <- if (weighted_IR) "adj" else "crude"
+    model_control <- .fit_group_model(group_name = "CONTROL", model_type = control_model_type)
+    ir_list_con <- est_inc_prev_model(model_control, group = "CONTROL", scale_IR = scale_IR)
   } else{
     ir_list_con <- est_inc_prev(n_pat_con, n_out_con, py_con,scale_IR = scale_IR, type = type, CImethod = CImethod)
   }
@@ -349,47 +411,23 @@ compute_rates_cohort <- function(aesifup_input,
                                       rr_type = "hazard",
                                       rd_type = "km")
 
-
-      } else if(risk_type == "logbinomial") { #--------------------------- LOG-BINOMIAL
-        # Log-binomial GLM: directly estimates cumulative risk ratios.
-        # Uses base-R glm() — no extra package required.
-        model_formula_rr <- as.formula(paste0(eventCol, " ~ group"))
-
-        crude_lb <- fitmod_logbin(model_formula_rr, model_type = "crude",
-                                  iptw = iptw, aesi_name = target_aesi,
-                                  aesifup_input = aesifup_input)
-        adj_lb   <- fitmod_logbin(model_formula_rr, model_type = "adj",
-                                  iptw = iptw, aesi_name = target_aesi,
-                                  aesifup_input = aesifup_input)
-
-        if (!is.null(minimum_count_for_comparative)) {
-          if (n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative) {
-            crude_lb <- "insufficient events"
-            adj_lb   <- "insufficient events"
-          }
-        }
-
-        ests_crude_lb <- extract_ests_logbin(crude_lb)
-        ests_adj_lb   <- extract_ests_logbin(adj_lb)
-        colnames(ests_crude_lb) <- paste0(colnames(ests_crude_lb), "_crude")
-        colnames(ests_adj_lb)   <- paste0(colnames(ests_adj_lb),   "_adj")
-
-        rr_list <- data.frame(ests_crude_lb, ests_adj_lb)
-        rd_list <- data.frame(rd_est_crude = -88, rd_lb_crude = -88, rd_ub_crude = -88,
-                              rd_est_adj   = -88, rd_lb_adj   = -88, rd_ub_adj   = -88)
-        risk_ratio_diff <- data.frame(rr_list, rd_list,
-                                      rr_type = "logbinomial",
-                                      rd_type = "logbinomial")
-
-      } else if(risk_type != "survival") { #--------------------------- GEE (INCIDENCE/PREVALENCE)
+ } else if(risk_type != "survival") { #--------------------------- GEE / LOGBIN (INCIDENCE/PREVALENCE)
         # ------- For non-survival type outcomes (incidence/prevalence) -------------
         # compute incidence rate or prevalence proportion ratio
         # compute incidence rate or prevalence proportion difference
 
         # use internal function defined below
         # this function either processes the model, or returns dummy output if model input is character string
-        risk_crude <- extract_ests_gee(model_crude,scale_IR = scale_IR)
-        risk_adj <- extract_ests_gee(modelobj = model_adj, scale_IR = scale_IR)
+        if (use_timevarying) {
+          risk_crude <- extract_ests_gee_tv(model_crude, scale_IR = scale_IR)
+          risk_adj <- extract_ests_gee_tv(modelobj = model_adj, scale_IR = scale_IR)
+        } else if (use_logbin) {
+          risk_crude <- extract_ests_logbin(model_crude, return_format = "risk")
+          risk_adj <- extract_ests_logbin(model_adj, return_format = "risk")
+        } else {
+          risk_crude <- extract_ests_gee(model_crude, scale_IR = scale_IR)
+          risk_adj <- extract_ests_gee(modelobj = model_adj, scale_IR = scale_IR)
+        }
 
         # change names of columns for consistency
         colnames(risk_crude) <- paste0(colnames(risk_crude),"_crude")
