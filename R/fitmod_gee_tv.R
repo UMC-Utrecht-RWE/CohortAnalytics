@@ -15,29 +15,28 @@ fitmod_gee_tv <- function(model_formula,
         stop(paste0("Column '", idCol, "' not found in aesifup_input"))
       }
 
-      if (model_type == "crude") {
-        return(geepack::geeglm(
-          formula = model_formula,
-          data = df,
-          family = binomial(link = "log"),
-          id = df[[idCol]]
-        ))
+      if (!(model_type %in% c("crude", "adj"))) {
+        stop("model_type must be either 'crude' or 'adj'")
       }
 
+      weight_vec <- NULL
       if (model_type == "adj") {
-        if (!(iptw %in% names(df))) {
+        if (is.null(iptw) || !(iptw %in% names(df))) {
           stop(paste0("Weight column '", iptw, "' not found in aesifup_input"))
         }
-        return(geepack::geeglm(
-          formula = model_formula,
-          data = df,
-          family = binomial(link = "log"),
-          id = df[[idCol]],
-          weights = df[[iptw]]
-        ))
+        weight_vec <- df[[iptw]]
       }
 
-      stop("model_type must be either 'crude' or 'adj'")
+      geeglm_args <- list(
+        formula = model_formula,
+        data = df,
+        family = binomial(link = "log"),
+        id = df[[idCol]]
+      )
+      if (!is.null(weight_vec)) {
+        geeglm_args$weights <- weight_vec
+      }
+      return(do.call(geepack::geeglm, geeglm_args))
     },
     warning = function(cond){
       warning_message <- paste("Time-varying GEE warning for", model_type,

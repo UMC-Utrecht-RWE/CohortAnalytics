@@ -126,45 +126,51 @@ compute_rates_cohort <- function(aesifup_input,
     model_formula_no_group_tv <- as.formula(paste0(eventCol, " ~ ", timeVar))
   }
 
+  # helper to route model fitting based on incidence_model setting
+  .fit_model <- function(model_formula_input, model_type, model_data) {
+    if (!(model_type %in% c("crude", "adj"))) {
+      stop("model_type must be either 'crude' or 'adj'")
+    }
+
+    iptw_arg <- if (model_type == "adj") iptw else NULL
+
+    if (use_timevarying) {
+      return(fitmod_gee_tv(model_formula_input,
+                           model_type = model_type,
+                           iptw = iptw_arg,
+                           idCol = idCol,
+                           aesi_name = target_aesi,
+                           aesifup_input = model_data))
+    } else if (use_logbin) {
+      return(fitmod_logbin(model_formula_input,
+                           model_type = model_type,
+                           iptw = iptw_arg,
+                           aesi_name = target_aesi,
+                           aesifup_input = model_data))
+    } else {
+      return(fitmod_gee(model_formula_input,
+                        model_type = model_type,
+                        iptw = iptw_arg,
+                        idCol = idCol,
+                        aesi_name = target_aesi,
+                        aesifup_input = model_data))
+    }
+
+    stop("Unhandled model family / model_type combination")
+  }
+
   # Fit crude and adjusted models to extract incidence/prevalence rate in each group
   # relies on internal function defined below in this script
   # if valid fit, returns fit object
   # if not, returns character string, prints to log
   # aesifup must have person_id_num, iptw for adjusted model
-  if (use_timevarying) {
-    model_crude <- fitmod_gee_tv(model_formula_tv,
-                                 model_type = "crude",
-                                 idCol = idCol,
-                                 aesi_name = target_aesi,
-                                 aesifup_input = aesifup_input)
-    model_adj <- fitmod_gee_tv(model_formula_tv,
-                               model_type = "adj",
-                               iptw = iptw,
-                               idCol = idCol,
-                               aesi_name = target_aesi,
-                               aesifup_input = aesifup_input)
-  } else if (use_logbin) {
-    model_crude <- fitmod_logbin(model_formula,
-                                 model_type = "crude",
-                                 iptw = iptw,
-                                 aesi_name = target_aesi,
-                                 aesifup_input = aesifup_input)
-    model_adj <- fitmod_logbin(model_formula,
-                               model_type = "adj",
-                               iptw = iptw,
-                               aesi_name = target_aesi,
-                               aesifup_input = aesifup_input)
-  } else {
-    model_crude <- fitmod_gee(model_formula,
-                              model_type = "crude",
-                              aesi_name = target_aesi,
-                              aesifup_input = aesifup_input)
-    model_adj <- fitmod_gee(model_formula,
-                            model_type = "adj",
-                            iptw = iptw,
-                            aesi_name = target_aesi,
-                            aesifup_input = aesifup_input)
-  }
+  model_formula_comparative <- if (use_timevarying) model_formula_tv else model_formula
+  model_crude <- .fit_model(model_formula_input = model_formula_comparative,
+                            model_type = "crude",
+                            model_data = aesifup_input)
+  model_adj <- .fit_model(model_formula_input = model_formula_comparative,
+                          model_type = "adj",
+                          model_data = aesifup_input)
   # estimate prevalence ratios and
 
   # ---- incidence rate / prevalence proportion statistics -----
@@ -174,26 +180,10 @@ compute_rates_cohort <- function(aesifup_input,
   # helper for fitting one-group models used in model-based IR estimation
   .fit_group_model <- function(group_name, model_type) {
     group_data <- aesifup_input[aesifup_input$group == group_name, ]
-    if (use_timevarying) {
-      fitmod_gee_tv(model_formula_no_group_tv,
-                    model_type = model_type,
-                    iptw = iptw,
-                    idCol = idCol,
-                    aesi_name = target_aesi,
-                    aesifup_input = group_data)
-    } else if (use_logbin) {
-      fitmod_logbin(model_formula_no_group,
-                    model_type = model_type,
-                    iptw = iptw,
-                    aesi_name = target_aesi,
-                    aesifup_input = group_data)
-    } else {
-      fitmod_gee(model_formula_no_group,
-                 model_type = model_type,
-                 iptw = iptw,
-                 aesi_name = target_aesi,
-                 aesifup_input = group_data)
-    }
+    model_formula_group <- if (use_timevarying) model_formula_no_group_tv else model_formula_no_group
+    .fit_model(model_formula_input = model_formula_group,
+               model_type = model_type,
+               model_data = group_data)
   }
 
   # compute rates for EXPOSED

@@ -27,14 +27,27 @@ fitmod_logbin <- function(model_formula,
   tryCatch({
     withCallingHandlers({
       df <- as.data.frame(aesifup_input)
-      if (model_type == "crude") {
-        glm(model_formula, family = binomial(link = "log"), data = df)
-      } else if (model_type == "adj") {
+      if (!(model_type %in% c("crude", "adj"))) {
+        stop("model_type must be either 'crude' or 'adj'")
+      }
+
+      glm_args <- list(
+        formula = model_formula,
+        family = binomial(link = "log"),
+        data = df
+      )
+
+      if (model_type == "adj") {
+        if (is.null(iptw) || !(iptw %in% names(df))) {
+          stop(paste0("Weight column '", iptw, "' not found in aesifup_input"))
+        }
         # Attach weights as a column so glm() can find it by name in data
         df[[".wt"]] <- df[[iptw]]
-        glm(model_formula, family = binomial(link = "log"), data = df,
-            weights = .wt)
+        glm_args$data <- df
+        glm_args$weights <- df[[".wt"]]
       }
+
+      do.call(stats::glm, glm_args)
     },
     warning = function(w) {
       logger::log_info(paste("Log-binomial warning for", model_type,
