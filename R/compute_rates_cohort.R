@@ -95,6 +95,42 @@ compute_rates_cohort <- function(aesifup_input,
   .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
   .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
 
+  .collapse_ir_rows <- function(group_rows) {
+    use_timevarying_ir_rows <- (
+      type == "incidence" &&
+        incidence_model == "timevarying" &&
+        !is.null(timeVar) &&
+        idCol %in% names(group_rows) &&
+        timeVar %in% names(group_rows)
+    )
+
+    if (!use_timevarying_ir_rows) {
+      return(group_rows)
+    }
+
+    row_order <- order(group_rows[[idCol]], group_rows[[timeVar]], na.last = TRUE)
+    group_rows <- group_rows[row_order, , drop = FALSE]
+    row_ids <- split(seq_len(nrow(group_rows)), group_rows[[idCol]], drop = TRUE)
+
+    keep_rows <- vapply(row_ids,
+                        FUN.VALUE = integer(1),
+                        function(person_rows) {
+                          event_values <- group_rows[[eventCol]][person_rows]
+                          event_hits <- which(!is.na(event_values) & event_values > 0)
+
+                          if (length(event_hits) > 0) {
+                            person_rows[event_hits[1]]
+                          } else {
+                            utils::tail(person_rows, 1)
+                          }
+                        })
+
+    group_rows[keep_rows, , drop = FALSE]
+  }
+
+  .exp_rows <- .collapse_ir_rows(.exp_rows)
+  .con_rows <- .collapse_ir_rows(.con_rows)
+
   n_pat_exp <- nrow(.exp_rows)
   n_pat_con <- nrow(.con_rows)
 
