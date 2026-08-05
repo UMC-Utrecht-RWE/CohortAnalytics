@@ -79,3 +79,53 @@ extract_ests_gee_tv <- function(modelobj,
   rownames(outobj) <- NULL
   outobj
 }
+
+
+  # Replace the ratio portion returned by extract_ests_gee_tv with the
+  # coefficient-based RR and robust Wald CI. This works for both the primary
+  # binomial-log GEE and the Poisson-log fallback.
+  .set_timevarying_rr <- function(extracted_estimates,
+                                  model_object,
+                                  conf_level = 0.95) {
+    if (!inherits(model_object, "geeglm")) {
+      return(extracted_estimates)
+    }
+
+    coef_table <- summary(model_object)$coefficients
+    group_rows <- grep("^group", rownames(coef_table))
+    if (length(group_rows) != 1L) {
+      logger::log_info(paste(
+        "Could not identify one group coefficient in time-varying GEE for",
+        target_aesi
+      ))
+      return(extracted_estimates)
+    }
+
+    estimate_col <- if ("Estimate" %in% colnames(coef_table)) {
+      "Estimate"
+    } else {
+      1L
+    }
+    se_col <- if ("Std.err" %in% colnames(coef_table)) {
+      "Std.err"
+    } else if ("Std. Error" %in% colnames(coef_table)) {
+      "Std. Error"
+    } else {
+      2L
+    }
+
+    beta_group <- coef_table[group_rows, estimate_col]
+    robust_se <- coef_table[group_rows, se_col]
+    z_value <- stats::qnorm(1 - (1 - conf_level) / 2)
+
+    rr_values <- c(
+      exp(beta_group),
+      exp(beta_group - z_value * robust_se),
+      exp(beta_group + z_value * robust_se)
+    )
+
+    # The first three columns from extract_ests_gee_tv are the ratio estimate,
+    # lower confidence limit, and upper confidence limit.
+    extracted_estimates[1, 1:3] <- rr_values
+    extracted_estimates
+  }

@@ -171,12 +171,41 @@ compute_rates_cohort <- function(aesifup_input,
     iptw_arg <- if (model_type == "adj") iptw else NULL
 
     if (use_timevarying) {
-      return(fitmod_gee_tv(model_formula_input,
-                           model_type = model_type,
-                           iptw = iptw_arg,
-                           idCol = idCol,
-                           aesi_name = target_aesi,
-                           aesifup_input = model_data))
+      # Make CONTROL the reference group so exp(groupEXPOSED) is the
+      # exposed-versus-control risk ratio for both model families.
+      tv_model_data <- as.data.frame(model_data)
+
+      primary_fit <- fitmod_gee_tv(model_formula_input,
+                                   model_type = model_type,
+                                   iptw = iptw_arg,
+                                   idCol = idCol,
+                                   aesi_name = target_aesi,
+                                   aesifup_input = tv_model_data)
+
+      # fitmod_gee_tv returns a character error message when geeglm fails.
+      # In that case, retry the same clustered/weighted model with a
+      # Poisson-log mean model. geeglm's sandwich SEs are retained.
+      if (is.character(primary_fit) && length(primary_fit) == 1L) {
+        deviation_message <- paste(
+          "Time-varying GEE model deviation for", model_type, "model,",
+          target_aesi, ": binomial-log failed; using Poisson-log fallback"
+        )
+        logger::log_info(deviation_message)
+        logger::log_info(primary_fit)
+
+        return(.fit_timevarying_poisson(
+          model_formula_input = model_formula_input,
+          model_type = model_type,
+          model_data = tv_model_data,
+          binomial_error = primary_fit
+        ))
+      }
+
+      if (inherits(primary_fit, "geeglm")) {
+        attr(primary_fit, "timevarying_family") <- "binomial"
+        attr(primary_fit, "timevarying_fallback") <- FALSE
+      }
+      return(primary_fit)
     } else if (use_logbin) {
       return(fitmod_logbin(model_formula_input,
                            model_type = model_type,
@@ -447,6 +476,8 @@ compute_rates_cohort <- function(aesifup_input,
         if (use_timevarying) {
           risk_crude <- extract_ests_gee_tv(model_crude, scale_IR = scale_IR)
           risk_adj <- extract_ests_gee_tv(modelobj = model_adj, scale_IR = scale_IR)
+          risk_crude <- .set_timevarying_rr(risk_crude, model_crude)
+          risk_adj <- .set_timevarying_rr(risk_adj, model_adj)
         } else if (use_logbin) {
           risk_crude <- extract_ests_logbin(model_crude, return_format = "risk")
           risk_adj <- extract_ests_logbin(model_adj, return_format = "risk")
