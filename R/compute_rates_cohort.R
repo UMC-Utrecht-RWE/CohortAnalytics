@@ -62,8 +62,7 @@ compute_rates_cohort <- function(aesifup_input,
                                  weighted_IR = FALSE,
                                  end_risk,
                                  output_format = "data.table",
-                                 minimum_count_for_comparative = 3){
-
+                                 minimum_count_for_comparative = 3) {
   # aesifup_input = aesifup_input_tmp
   # # global settings
   # fupCol
@@ -87,26 +86,30 @@ compute_rates_cohort <- function(aesifup_input,
   #   #                   "km_rsk_exp" =  -88, "lb_km_exp" = -88, "ub_km_exp" = -88,
   #   #                   "km_rsk_con" =  -88, "lb_km_con" = -88, "ub_km_con" = -88))
   # }
-  #====================================   COUNTS    =======================================#
-  #===== SUM PER GROUP
+  # ====================================   COUNTS    =======================================#
+  # ===== SUM PER GROUP
   # Base-R subsetting avoids data.table j-expression scoping issues when the
   # function is called from the package namespace (pyrCol / eventCol are local
   # variables that data.table cannot reliably resolve inside j with .SD[[]]).
   .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
   .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
 
-  .exp_rows <- .collapse_compute_rates_ir_rows(group_rows = .exp_rows,
-                                               type = type,
-                                               incidence_model = incidence_model,
-                                               timeVar = timeVar,
-                                               idCol = idCol,
-                                               eventCol = eventCol)
-  .con_rows <- .collapse_compute_rates_ir_rows(group_rows = .con_rows,
-                                               type = type,
-                                               incidence_model = incidence_model,
-                                               timeVar = timeVar,
-                                               idCol = idCol,
-                                               eventCol = eventCol)
+  .exp_rows <- .collapse_compute_rates_ir_rows(
+    group_rows = .exp_rows,
+    type = type,
+    incidence_model = incidence_model,
+    timeVar = timeVar,
+    idCol = idCol,
+    eventCol = eventCol
+  )
+  .con_rows <- .collapse_compute_rates_ir_rows(
+    group_rows = .con_rows,
+    type = type,
+    incidence_model = incidence_model,
+    timeVar = timeVar,
+    idCol = idCol,
+    eventCol = eventCol
+  )
 
   n_pat_exp <- nrow(.exp_rows)
   n_pat_con <- nrow(.con_rows)
@@ -119,13 +122,13 @@ compute_rates_cohort <- function(aesifup_input,
   py_exp <- sum(.exp_rows[[pyrCol]], na.rm = TRUE)
   py_con <- sum(.con_rows[[pyrCol]], na.rm = TRUE)
 
-  #==================================  INCIDENCE RATES   ==================================#
+  # ==================================  INCIDENCE RATES   ==================================#
   # create appropriate model type depending on desired estimand (incidence/prevalence)
   # with GEE model-based approahces incidence vs prevalence is determined by the offset
   # incidence - offset = log(pyr)
   # prevalence - offset = 1
-  model_formula <- as.formula(paste0(eventCol, " ~ group + offset(",pyr_offset,")"))
-  model_formula_no_group <- as.formula(paste0(eventCol, " ~ offset(",pyr_offset,")"))
+  model_formula <- as.formula(paste0(eventCol, " ~ group + offset(", pyr_offset, ")"))
+  model_formula_no_group <- as.formula(paste0(eventCol, " ~ offset(", pyr_offset, ")"))
   model_formula_no_group_tv <- NULL
 
   use_logbin <- (risk_type != "survival" && type == "incidence" && incidence_model == "logbinomial")
@@ -146,22 +149,26 @@ compute_rates_cohort <- function(aesifup_input,
   # if not, returns character string, prints to log
   # aesifup must have person_id_num, iptw for adjusted model
   model_formula_comparative <- if (use_timevarying) model_formula_tv else model_formula
-  model_crude <- .fit_compute_rates_model(model_formula_input = model_formula_comparative,
-                                          model_type = "crude",
-                                          model_data = aesifup_input,
-                                          use_timevarying = use_timevarying,
-                                          use_logbin = use_logbin,
-                                          iptw = iptw,
-                                          idCol = idCol,
-                                          target_aesi = target_aesi)
-  model_adj <- .fit_compute_rates_model(model_formula_input = model_formula_comparative,
-                                        model_type = "adj",
-                                        model_data = aesifup_input,
-                                        use_timevarying = use_timevarying,
-                                        use_logbin = use_logbin,
-                                        iptw = iptw,
-                                        idCol = idCol,
-                                        target_aesi = target_aesi)
+  model_crude <- .fit_compute_rates_model(
+    model_formula_input = model_formula_comparative,
+    model_type = "crude",
+    model_data = aesifup_input,
+    use_timevarying = use_timevarying,
+    use_logbin = use_logbin,
+    iptw = iptw,
+    idCol = idCol,
+    target_aesi = target_aesi
+  )
+  model_adj <- .fit_compute_rates_model(
+    model_formula_input = model_formula_comparative,
+    model_type = "adj",
+    model_data = aesifup_input,
+    use_timevarying = use_timevarying,
+    use_logbin = use_logbin,
+    iptw = iptw,
+    idCol = idCol,
+    target_aesi = target_aesi
+  )
   # estimate prevalence ratios and
 
   # ---- incidence rate / prevalence proportion statistics -----
@@ -170,142 +177,152 @@ compute_rates_cohort <- function(aesifup_input,
 
   # compute rates for EXPOSED
   # if weighted IR requested, always use model based IR for exposed
-  if(weighted_IR == TRUE){
-    model_adj_exposed <- .fit_compute_rates_group_model(group_name = "EXPOSED",
-                                                        model_type = "adj",
-                                                        aesifup_input = aesifup_input,
-                                                        use_timevarying = use_timevarying,
-                                                        model_formula_no_group = model_formula_no_group,
-                                                        model_formula_no_group_tv = model_formula_no_group_tv,
-                                                        use_logbin = use_logbin,
-                                                        iptw = iptw,
-                                                        idCol = idCol,
-                                                        target_aesi = target_aesi)
+  if (weighted_IR == TRUE) {
+    model_adj_exposed <- .fit_compute_rates_group_model(
+      group_name = "EXPOSED",
+      model_type = "adj",
+      aesifup_input = aesifup_input,
+      use_timevarying = use_timevarying,
+      model_formula_no_group = model_formula_no_group,
+      model_formula_no_group_tv = model_formula_no_group_tv,
+      use_logbin = use_logbin,
+      iptw = iptw,
+      idCol = idCol,
+      target_aesi = target_aesi
+    )
     ir_list_exp <- est_inc_prev_model(model_adj_exposed, group = "EXPOSED", scale_IR = scale_IR)
-
   } else {
-    ir_list_exp <- est_inc_prev(n_pat_exp, n_out_exp, py_exp,scale_IR = scale_IR, type = type, CImethod = CImethod)
+    ir_list_exp <- est_inc_prev(n_pat_exp, n_out_exp, py_exp, scale_IR = scale_IR, type = type, CImethod = CImethod)
   }
 
   # compute rates for CONTROL
-  if(model_based_control){
+  if (model_based_control) {
     control_model_type <- if (weighted_IR) "adj" else "crude"
-    model_control <- .fit_compute_rates_group_model(group_name = "CONTROL",
-                                                    model_type = control_model_type,
-                                                    aesifup_input = aesifup_input,
-                                                    use_timevarying = use_timevarying,
-                                                    model_formula_no_group = model_formula_no_group,
-                                                    model_formula_no_group_tv = model_formula_no_group_tv,
-                                                    use_logbin = use_logbin,
-                                                    iptw = iptw,
-                                                    idCol = idCol,
-                                                    target_aesi = target_aesi)
+    model_control <- .fit_compute_rates_group_model(
+      group_name = "CONTROL",
+      model_type = control_model_type,
+      aesifup_input = aesifup_input,
+      use_timevarying = use_timevarying,
+      model_formula_no_group = model_formula_no_group,
+      model_formula_no_group_tv = model_formula_no_group_tv,
+      use_logbin = use_logbin,
+      iptw = iptw,
+      idCol = idCol,
+      target_aesi = target_aesi
+    )
     ir_list_con <- est_inc_prev_model(model_control, group = "CONTROL", scale_IR = scale_IR)
-  } else{
-    ir_list_con <- est_inc_prev(n_pat_con, n_out_con, py_con,scale_IR = scale_IR, type = type, CImethod = CImethod)
+  } else {
+    ir_list_con <- est_inc_prev(n_pat_con, n_out_con, py_con, scale_IR = scale_IR, type = type, CImethod = CImethod)
   }
 
   # rename incidence rates to be group labelled
-  colnames(ir_list_exp) <- paste0(colnames(ir_list_exp),"_exp")
-  colnames(ir_list_con) <- paste0(colnames(ir_list_con),"_con")
+  colnames(ir_list_exp) <- paste0(colnames(ir_list_exp), "_exp")
+  colnames(ir_list_con) <- paste0(colnames(ir_list_con), "_con")
 
 
 
-  #===============================  CUMULATIVE INCIDENCE   ==================================#
-  if(risk_type == "survival" & CumulativeInc){
+  # ===============================  CUMULATIVE INCIDENCE   ==================================#
+  if (risk_type == "survival" & CumulativeInc) {
     # ------------------- compute cumulative incidences/risks -------------------
     # first compute the max follow up time in each group
 
-    if(comparison_measures){
-      max_fuptime_tmp <- suppressWarnings(c(aesifup_input[group == "EXPOSED", max(get(fupCol))],
-                                            aesifup_input[group == "CONTROL", max(get(fupCol))]))
+    if (comparison_measures) {
+      max_fuptime_tmp <- suppressWarnings(c(
+        aesifup_input[group == "EXPOSED", max(get(fupCol))],
+        aesifup_input[group == "CONTROL", max(get(fupCol))]
+      ))
       max_fuptime <- min(max_fuptime_tmp[!is.infinite(max_fuptime_tmp)])
-
-    } else if(!comparison_measures){
+    } else if (!comparison_measures) {
       max_fuptime <- aesifup_input[, max(get(fupCol))]
-
     }
 
     # evaluate risks at the max follow up time
 
     #  matched and weighted
     cuminc_ests_crude <- create_risk_table(aesifup_input,
-                                           timepoints = max_fuptime,
-                                           target_aesi = target_aesi,
-                                           use_weights = FALSE,
-                                           fupCol = fupCol,
-                                           eventCol = eventCol,
-                                           iptw = iptw,
-                                           scale_IR = scale_IR,
-                                           comparison_measures = comparison_measures)
-    if(!is.null(iptw)){
+      timepoints = max_fuptime,
+      target_aesi = target_aesi,
+      use_weights = FALSE,
+      fupCol = fupCol,
+      eventCol = eventCol,
+      iptw = iptw,
+      scale_IR = scale_IR,
+      comparison_measures = comparison_measures
+    )
+    if (!is.null(iptw)) {
       cuminc_ests_adj <- create_risk_table(aesifup_input,
-                                           timepoints = max_fuptime,
-                                           target_aesi = target_aesi,
-                                           use_weights = TRUE,
-                                           fupCol = fupCol,
-                                           eventCol = eventCol,
-                                           iptw = iptw,
-                                           scale_IR = scale_IR,
-                                           comparison_measures = comparison_measures)
+        timepoints = max_fuptime,
+        target_aesi = target_aesi,
+        use_weights = TRUE,
+        fupCol = fupCol,
+        eventCol = eventCol,
+        iptw = iptw,
+        scale_IR = scale_IR,
+        comparison_measures = comparison_measures
+      )
     } else {
-      cuminc_ests_adj <- data.frame(time =-99,
-                                    "cuminc_est_exp" = -99,
-                                    "cuminc_lb_exp"  = -99,
-                                    "cuminc_ub_exp" = -99,
-                                    "cuminc_est_con" = -99,
-                                    "cuminc_lb_con" = -99,
-                                    "cuminc_ub_con" = -99)
-
+      cuminc_ests_adj <- data.frame(
+        time = -99,
+        "cuminc_est_exp" = -99,
+        "cuminc_lb_exp" = -99,
+        "cuminc_ub_exp" = -99,
+        "cuminc_est_con" = -99,
+        "cuminc_lb_con" = -99,
+        "cuminc_ub_con" = -99
+      )
     }
-  } else { #prevalence
-    cuminc_ests_crude <- data.frame(time =-99,
-                                    "cuminc_est_exp" = -99,
-                                    "cuminc_lb_exp"  = -99,
-                                    "cuminc_ub_exp" = -99,
-                                    "cuminc_est_con" = -99,
-                                    "cuminc_lb_con" = -99,
-                                    "cuminc_ub_con" = -99)
-    cuminc_ests_adj <- data.frame(time =-99,
-                                  "cuminc_est_exp" = -99,
-                                  "cuminc_lb_exp"  = -99,
-                                  "cuminc_ub_exp" = -99,
-                                  "cuminc_est_con" = -99,
-                                  "cuminc_lb_con" = -99,
-                                  "cuminc_ub_con" = -99)
+  } else { # prevalence
+    cuminc_ests_crude <- data.frame(
+      time = -99,
+      "cuminc_est_exp" = -99,
+      "cuminc_lb_exp" = -99,
+      "cuminc_ub_exp" = -99,
+      "cuminc_est_con" = -99,
+      "cuminc_lb_con" = -99,
+      "cuminc_ub_con" = -99
+    )
+    cuminc_ests_adj <- data.frame(
+      time = -99,
+      "cuminc_est_exp" = -99,
+      "cuminc_lb_exp" = -99,
+      "cuminc_ub_exp" = -99,
+      "cuminc_est_con" = -99,
+      "cuminc_lb_con" = -99,
+      "cuminc_ub_con" = -99
+    )
   }
 
   # ------ collect output --------
   # add label to cumulative incidence objects
-  colnames(cuminc_ests_crude)[-1] <- paste0(colnames(cuminc_ests_crude)[-1],"_crude")
-  colnames(cuminc_ests_adj) <- paste0(colnames(cuminc_ests_adj),"_adj")
+  colnames(cuminc_ests_crude)[-1] <- paste0(colnames(cuminc_ests_crude)[-1], "_crude")
+  colnames(cuminc_ests_adj) <- paste0(colnames(cuminc_ests_adj), "_adj")
 
   # drop time column duplication
-  cuminc_ests <- data.frame(cuminc_ests_crude,cuminc_ests_adj[-1])
+  cuminc_ests <- data.frame(cuminc_ests_crude, cuminc_ests_adj[-1])
 
   # replace NA with non-estimable flag
   cuminc_ests[is.na(cuminc_ests)] <- -88
 
 
-  if(!comparison_measures) {
-    ests_out <- data.frame(aesi = target_aesi,
-                           # descriptive estimates relating to exposed
-                           n_pat_exp = n_pat_exp,
-                           n_out_exp = n_out_exp,
-                           py_exp = py_exp,
-                           ir_list_exp,
-                           # descriptive estiamtes contorl
-                           n_pat_con = n_pat_con,
-                           n_out_con = n_out_con,
-                           py_con = py_con,
-                           ir_list_con,
-                           # cumulative incidences
-                           end_risk = ifelse(is.null(end_risk),"NULL",end_risk),
-                           cuminc_ests
+  if (!comparison_measures) {
+    ests_out <- data.frame(
+      aesi = target_aesi,
+      # descriptive estimates relating to exposed
+      n_pat_exp = n_pat_exp,
+      n_out_exp = n_out_exp,
+      py_exp = py_exp,
+      ir_list_exp,
+      # descriptive estiamtes contorl
+      n_pat_con = n_pat_con,
+      n_out_con = n_out_con,
+      py_con = py_con,
+      ir_list_con,
+      # cumulative incidences
+      end_risk = ifelse(is.null(end_risk), "NULL", end_risk),
+      cuminc_ests
     )
-
   } else if (comparison_measures) {
-    #================================   COMPARISION MEAURES   =================================#
+    # ================================   COMPARISION MEAURES   =================================#
     # ----------------------------------------------------------------------------
     # ----------------------- Risk Difference and Ratios -------------------------
     # ----------------------------------------------------------------------------
@@ -313,52 +330,62 @@ compute_rates_cohort <- function(aesifup_input,
     #  ------------- for survival-type outcomes, calculate ---------------
     # Hazard Ratios (matched and adjusted)
     # Risk Differences based on cumulative incidence differences
-    if(nrow(aesifup_input) == 0){
-      #ratio
-      rr_list <- data.frame(rr_est_crude = -99,
-                            rr_lb_crude = -99,
-                            rr_ub_crude = -99,
-                            rr_est_adj = -99,
-                            rr_lb_adj = -99,
-                            rr_ub_adj = -99)
-      #difference
-      rd_list <- data.frame(rd_est_crude = -99,
-                            rd_lb_crude = -99,
-                            rd_ub_crude = -99,
-                            rd_est_adj = -99,
-                            rd_lb_adj = -99,
-                            rd_ub_adj = -99)
+    if (nrow(aesifup_input) == 0) {
+      # ratio
+      rr_list <- data.frame(
+        rr_est_crude = -99,
+        rr_lb_crude = -99,
+        rr_ub_crude = -99,
+        rr_est_adj = -99,
+        rr_lb_adj = -99,
+        rr_ub_adj = -99
+      )
+      # difference
+      rd_list <- data.frame(
+        rd_est_crude = -99,
+        rd_lb_crude = -99,
+        rd_ub_crude = -99,
+        rd_est_adj = -99,
+        rd_lb_adj = -99,
+        rd_ub_adj = -99
+      )
 
       risk_ratio_diff <- data.frame(rr_list,
-                                    rd_list,
-                                    rr_type = "hazard",
-                                    rd_type = "km")
+        rd_list,
+        rr_type = "hazard",
+        rd_type = "km"
+      )
     } else {
-
-      if(risk_type == "survival"){#--------------------------- SURVIVAL
+      if (risk_type == "survival") { #--------------------------- SURVIVAL
         #---------ratio
-        if(n_out_con == 0 | n_out_exp == 0) {
-          rr_list <- data.frame(rr_est_crude = -88,
-                                rr_lb_crude = -88,
-                                rr_ub_crude = -88,
-                                rr_est_adj = -88,
-                                rr_lb_adj = -88,
-                                rr_ub_adj = -88)
+        if (n_out_con == 0 | n_out_exp == 0) {
+          rr_list <- data.frame(
+            rr_est_crude = -88,
+            rr_lb_crude = -88,
+            rr_ub_crude = -88,
+            rr_est_adj = -88,
+            rr_lb_adj = -88,
+            rr_ub_adj = -88
+          )
         } else {
-          crude_hr  <- estimate_HR(aesifup = aesifup_input, fupCol = fupCol,
-                                   eventCol = eventCol,
-                                   iptw = iptw,
-                                   model_type = "crude",
-                                   aesi_name = target_aesi)
+          crude_hr <- estimate_HR(
+            aesifup = aesifup_input, fupCol = fupCol,
+            eventCol = eventCol,
+            iptw = iptw,
+            model_type = "crude",
+            aesi_name = target_aesi
+          )
 
-          adj_hr  <- estimate_HR(aesifup = aesifup_input, fupCol = fupCol,
-                                 eventCol = eventCol,
-                                 iptw = iptw,
-                                 model_type = "adj",
-                                 aesi_name = target_aesi)
-          #rename columns
-          colnames(adj_hr) <- paste0(colnames(adj_hr),"_adj")
-          colnames(crude_hr) <- paste0(colnames(crude_hr),"_crude")
+          adj_hr <- estimate_HR(
+            aesifup = aesifup_input, fupCol = fupCol,
+            eventCol = eventCol,
+            iptw = iptw,
+            model_type = "adj",
+            aesi_name = target_aesi
+          )
+          # rename columns
+          colnames(adj_hr) <- paste0(colnames(adj_hr), "_adj")
+          colnames(crude_hr) <- paste0(colnames(crude_hr), "_crude")
 
           # bind together
           rr_list <- data.frame(cbind(crude_hr, adj_hr))
@@ -367,41 +394,47 @@ compute_rates_cohort <- function(aesifup_input,
         #----------difference
         # risk difference - take difference in risks
         rd_est_crude <- cuminc_ests_crude$cuminc_est_exp_crude - cuminc_ests_crude$cuminc_est_con_crude
-        rd_est_adj <- cuminc_ests_adj$cuminc_est_exp_adj  - cuminc_ests_adj$cuminc_est_con_adj
+        rd_est_adj <- cuminc_ests_adj$cuminc_est_exp_adj - cuminc_ests_adj$cuminc_est_con_adj
 
-        if(is.na(rd_est_crude)) rd_est_crude <- -88
-        if(is.na(rd_est_adj)) rd_est_adj <- -88
+        if (is.na(rd_est_crude)) rd_est_crude <- -88
+        if (is.na(rd_est_adj)) rd_est_adj <- -88
 
-        if(!is.null(minimum_count_for_comparative)){
-          if(n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative){
-            rd_list <- data.frame(rd_est_crude = -77,
-                                  rd_lb_crude = -77,
-                                  rd_ub_crude = -77,
-                                  rd_est_adj = -77,
-                                  rd_lb_adj = -77,
-                                  rd_ub_adj = -77)
+        if (!is.null(minimum_count_for_comparative)) {
+          if (n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative) {
+            rd_list <- data.frame(
+              rd_est_crude = -77,
+              rd_lb_crude = -77,
+              rd_ub_crude = -77,
+              rd_est_adj = -77,
+              rd_lb_adj = -77,
+              rd_ub_adj = -77
+            )
           } else {
-            rd_list <- data.frame(rd_est_crude = rd_est_crude,
-                                  rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
-                                  rd_ub_crude = -88,
-                                  rd_est_adj = rd_est_adj,
-                                  rd_lb_adj = -88,
-                                  rd_ub_adj = -88)
+            rd_list <- data.frame(
+              rd_est_crude = rd_est_crude,
+              rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
+              rd_ub_crude = -88,
+              rd_est_adj = rd_est_adj,
+              rd_lb_adj = -88,
+              rd_ub_adj = -88
+            )
           }
         } else {
-          rd_list <- data.frame(rd_est_crude = rd_est_crude,
-                                rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
-                                rd_ub_crude = -88,
-                                rd_est_adj = rd_est_adj,
-                                rd_lb_adj = -88,
-                                rd_ub_adj = -88)
+          rd_list <- data.frame(
+            rd_est_crude = rd_est_crude,
+            rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
+            rd_ub_crude = -88,
+            rd_est_adj = rd_est_adj,
+            rd_lb_adj = -88,
+            rd_ub_adj = -88
+          )
         }
         risk_ratio_diff <- data.frame(rr_list,
-                                      rd_list,
-                                      rr_type = "hazard",
-                                      rd_type = "km")
-
- } else if(risk_type != "survival") { #--------------------------- GEE / LOGBIN (INCIDENCE/PREVALENCE)
+          rd_list,
+          rr_type = "hazard",
+          rd_type = "km"
+        )
+      } else if (risk_type != "survival") { #--------------------------- GEE / LOGBIN (INCIDENCE/PREVALENCE)
         # ------- For non-survival type outcomes (incidence/prevalence) -------------
         # compute incidence rate or prevalence proportion ratio
         # compute incidence rate or prevalence proportion difference
@@ -422,73 +455,75 @@ compute_rates_cohort <- function(aesifup_input,
         }
 
         # change names of columns for consistency
-        colnames(risk_crude) <- paste0(colnames(risk_crude),"_crude")
-        colnames(risk_adj) <- paste0(colnames(risk_adj),"_adj")
+        colnames(risk_crude) <- paste0(colnames(risk_crude), "_crude")
+        colnames(risk_adj) <- paste0(colnames(risk_adj), "_adj")
 
         # colnames(risk_crude) <- gsub("irr", "rr", colnames(risk_crude))
         # colnames(risk_crude) <- gsub("irr", "rr", colnames(risk_adj))
 
-        if(!is.null(minimum_count_for_comparative)){
-          if(n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative){
-            risk_crude[,4:6] <- -77
-            risk_adj[,4:6] <- -77
+        if (!is.null(minimum_count_for_comparative)) {
+          if (n_out_exp < minimum_count_for_comparative | n_out_con < minimum_count_for_comparative) {
+            risk_crude[, 4:6] <- -77
+            risk_adj[, 4:6] <- -77
           }
         }
 
         # put columns together in correct order
-        risk_ratio_diff  <- data.frame(
+        risk_ratio_diff <- data.frame(
           # risk ratios
-          risk_crude[,1:3],
-          risk_adj[,1:3],
+          risk_crude[, 1:3],
+          risk_adj[, 1:3],
           # risk differences
-          risk_crude[,4:6],
-          risk_adj[,4:6],
+          risk_crude[, 4:6],
+          risk_adj[, 4:6],
           rr_type = type,
           rd_type = type
         )
         colnames(risk_ratio_diff) <- gsub("irr", "rr", colnames(risk_ratio_diff))
         colnames(risk_ratio_diff) <- gsub("ird", "rd", colnames(risk_ratio_diff))
-
       }
     } # close if(nrow(aesifup_input) == 0)
 
-    #===================================   COMBINE ALL   ======================================#
+    # ===================================   COMBINE ALL   ======================================#
     #  ------ collect base information in a data.frame -----
-    ests_out <- data.frame(aesi = target_aesi,
-                           # descriptive estimates relating to exposed
-                           n_pat_exp = n_pat_exp,
-                           n_out_exp = n_out_exp,
-                           py_exp = py_exp,
-                           ir_list_exp,
-                           # descriptive estiamtes contorl
-                           n_pat_con = n_pat_con,
-                           n_out_con = n_out_con,
-                           py_con = py_con,
-                           ir_list_con,
-                           # cumulative incidences
-                           end_risk = ifelse(is.null(end_risk),"NULL",end_risk),
-                           cuminc_ests,
-                           # risk ratios and differences
-                           risk_ratio_diff
+    ests_out <- data.frame(
+      aesi = target_aesi,
+      # descriptive estimates relating to exposed
+      n_pat_exp = n_pat_exp,
+      n_out_exp = n_out_exp,
+      py_exp = py_exp,
+      ir_list_exp,
+      # descriptive estiamtes contorl
+      n_pat_con = n_pat_con,
+      n_out_con = n_out_con,
+      py_con = py_con,
+      ir_list_con,
+      # cumulative incidences
+      end_risk = ifelse(is.null(end_risk), "NULL", end_risk),
+      cuminc_ests,
+      # risk ratios and differences
+      risk_ratio_diff
     )
   } # close if(comparison_measures)
-  if(output_format == "data.table") {
+  if (output_format == "data.table") {
     ests_out <- data.table::as.data.table(ests_out)
   }
 
   if (use_timevarying) {
-    return(list(
+    return(data.table::data.table(
       estimates = ests_out,
-      predicted_probabilities = list(
-        crude = .predict_timevarying_probabilities(fit = model_crude,
-                                                   model_data = aesifup_input,
-                                                   timeVar = timeVar,
-                                                   idCol = idCol),
-        adj = .predict_timevarying_probabilities(fit = model_adj,
-                                                 model_data = aesifup_input,
-                                                 timeVar = timeVar,
-                                                 idCol = idCol)
-      )
+      pred_prob_crude = list(.predict_timevarying_probabilities(
+        fit = model_crude,
+        model_data = aesifup_input,
+        timeVar = timeVar,
+        idCol = idCol
+      )),
+      pred_prob_adj = list(.predict_timevarying_probabilities(
+        fit = model_adj,
+        model_data = aesifup_input,
+        timeVar = timeVar,
+        idCol = idCol
+      ))
     ))
   }
 
