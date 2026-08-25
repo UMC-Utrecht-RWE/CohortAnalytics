@@ -64,6 +64,9 @@ fitmod_gee_tv <- function(model_formula,
   .fit_timevarying_poisson <- function(model_formula_input,
                                        model_type,
                                        model_data,
+                                       idCol = "person_id_num",
+                                       iptw = NULL,
+                                       target_aesi = NULL,
                                        binomial_error = NULL) {
     tryCatch({
       withCallingHandlers({

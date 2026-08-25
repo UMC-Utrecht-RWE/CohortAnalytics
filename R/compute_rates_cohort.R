@@ -1,3 +1,138 @@
+# helper to collapse time-varying person-period rows to one row per person for
+# descriptive incidence counts
+.collapse_compute_rates_ir_rows <- function(group_rows,
+                                            type,
+                                            incidence_model,
+                                            timeVar,
+                                            idCol,
+                                            eventCol) {
+  use_timevarying_ir_rows <- (
+    type == "incidence" &&
+      incidence_model == "timevarying" &&
+      !is.null(timeVar) &&
+      idCol %in% names(group_rows) &&
+      timeVar %in% names(group_rows)
+  )
+
+  if (!use_timevarying_ir_rows) {
+    return(group_rows)
+  }
+
+  row_order <- order(group_rows[[idCol]], group_rows[[timeVar]], na.last = TRUE)
+  group_rows <- group_rows[row_order, , drop = FALSE]
+  row_ids <- split(seq_len(nrow(group_rows)), group_rows[[idCol]], drop = TRUE)
+
+  keep_rows <- vapply(row_ids,
+                      FUN.VALUE = integer(1),
+                      function(person_rows) {
+                        event_values <- group_rows[[eventCol]][person_rows]
+                        event_hits <- which(!is.na(event_values) & event_values > 0)
+
+                        if (length(event_hits) > 0) {
+                          person_rows[event_hits[1]]
+                        } else {
+                          utils::tail(person_rows, 1)
+                        }
+                      })
+
+  group_rows[keep_rows, , drop = FALSE]
+}
+
+# helper to route comparative and one-group model fitting for compute_rates_cohort
+.fit_compute_rates_model <- function(model_formula_input,
+                                     model_type,
+                                     model_data,
+                                     use_timevarying,
+                                     use_logbin,
+                                     iptw,
+                                     idCol,
+                                     target_aesi) {
+  if (!(model_type %in% c("crude", "adj"))) {
+    stop("model_type must be either 'crude' or 'adj'")
+  }
+
+  iptw_arg <- if (model_type == "adj") iptw else NULL
+
+  if (use_timevarying) {
+    tv_model_data <- as.data.frame(model_data)
+
+    primary_fit <- fitmod_gee_tv(model_formula_input,
+                                 model_type = model_type,
+                                 iptw = iptw_arg,
+                                 idCol = idCol,
+                                 aesi_name = target_aesi,
+                                 aesifup_input = tv_model_data)
+
+    if (is.character(primary_fit) && length(primary_fit) == 1L) {
+      deviation_message <- paste(
+        "Time-varying GEE model deviation for", model_type, "model,",
+        target_aesi, ": binomial-log failed; using Poisson-log fallback"
+      )
+      logger::log_info(deviation_message)
+      logger::log_info(primary_fit)
+
+      return(.fit_timevarying_poisson(
+        model_formula_input = model_formula_input,
+        model_type = model_type,
+        model_data = tv_model_data,
+        idCol = idCol,
+        iptw = iptw_arg,
+        target_aesi = target_aesi,
+        binomial_error = primary_fit
+      ))
+    }
+
+    if (inherits(primary_fit, "geeglm")) {
+      attr(primary_fit, "timevarying_family") <- "binomial"
+      attr(primary_fit, "timevarying_fallback") <- FALSE
+    }
+    return(primary_fit)
+  }
+
+  if (use_logbin) {
+    return(fitmod_logbin(model_formula_input,
+                         model_type = model_type,
+                         iptw = iptw_arg,
+                         aesi_name = target_aesi,
+                         aesifup_input = model_data))
+  }
+
+  fitmod_gee(model_formula_input,
+             model_type = model_type,
+             iptw = iptw_arg,
+             idCol = idCol,
+             aesi_name = target_aesi,
+             aesifup_input = model_data)
+}
+
+# helper for fitting one-group models used in model-based IR estimation
+.fit_compute_rates_group_model <- function(group_name,
+                                           model_type,
+                                           aesifup_input,
+                                           use_timevarying,
+                                           model_formula_no_group,
+                                           model_formula_no_group_tv = NULL,
+                                           use_logbin,
+                                           iptw,
+                                           idCol,
+                                           target_aesi) {
+  group_data <- aesifup_input[aesifup_input$group == group_name, ]
+  model_formula_group <- if (use_timevarying) {
+    model_formula_no_group_tv
+  } else {
+    model_formula_no_group
+  }
+
+  .fit_compute_rates_model(model_formula_input = model_formula_group,
+                           model_type = model_type,
+                           model_data = group_data,
+                           use_timevarying = use_timevarying,
+                           use_logbin = use_logbin,
+                           iptw = iptw,
+                           idCol = idCol,
+                           target_aesi = target_aesi)
+}
+
 # wrapper function to create outputs of incidence rates, IRRs, IRDs adjusted and crude
 # assumes a single aesi cohort input file, with columns eventCount_<analysis_id> and pyr_<analysis_id>
 # Computes and outputs (for eeach control and exposed group)
@@ -95,41 +230,18 @@ compute_rates_cohort <- function(aesifup_input,
   .exp_rows <- aesifup_input[aesifup_input$group == "EXPOSED", ]
   .con_rows <- aesifup_input[aesifup_input$group == "CONTROL", ]
 
-  .collapse_ir_rows <- function(group_rows) {
-    use_timevarying_ir_rows <- (
-      type == "incidence" &&
-        incidence_model == "timevarying" &&
-        !is.null(timeVar) &&
-        idCol %in% names(group_rows) &&
-        timeVar %in% names(group_rows)
-    )
-
-    if (!use_timevarying_ir_rows) {
-      return(group_rows)
-    }
-
-    row_order <- order(group_rows[[idCol]], group_rows[[timeVar]], na.last = TRUE)
-    group_rows <- group_rows[row_order, , drop = FALSE]
-    row_ids <- split(seq_len(nrow(group_rows)), group_rows[[idCol]], drop = TRUE)
-
-    keep_rows <- vapply(row_ids,
-                        FUN.VALUE = integer(1),
-                        function(person_rows) {
-                          event_values <- group_rows[[eventCol]][person_rows]
-                          event_hits <- which(!is.na(event_values) & event_values > 0)
-
-                          if (length(event_hits) > 0) {
-                            person_rows[event_hits[1]]
-                          } else {
-                            utils::tail(person_rows, 1)
-                          }
-                        })
-
-    group_rows[keep_rows, , drop = FALSE]
-  }
-
-  .exp_rows <- .collapse_ir_rows(.exp_rows)
-  .con_rows <- .collapse_ir_rows(.con_rows)
+  .exp_rows <- .collapse_compute_rates_ir_rows(group_rows = .exp_rows,
+                                               type = type,
+                                               incidence_model = incidence_model,
+                                               timeVar = timeVar,
+                                               idCol = idCol,
+                                               eventCol = eventCol)
+  .con_rows <- .collapse_compute_rates_ir_rows(group_rows = .con_rows,
+                                               type = type,
+                                               incidence_model = incidence_model,
+                                               timeVar = timeVar,
+                                               idCol = idCol,
+                                               eventCol = eventCol)
 
   n_pat_exp <- nrow(.exp_rows)
   n_pat_con <- nrow(.con_rows)
@@ -149,6 +261,7 @@ compute_rates_cohort <- function(aesifup_input,
   # prevalence - offset = 1
   model_formula <- as.formula(paste0(eventCol, " ~ group + offset(",pyr_offset,")"))
   model_formula_no_group <- as.formula(paste0(eventCol, " ~ offset(",pyr_offset,")"))
+  model_formula_no_group_tv <- NULL
 
   use_logbin <- (risk_type != "survival" && type == "incidence" && incidence_model == "logbinomial")
   use_timevarying <- (risk_type != "survival" && type == "incidence" && incidence_model == "timevarying")
@@ -162,99 +275,47 @@ compute_rates_cohort <- function(aesifup_input,
     model_formula_no_group_tv <- as.formula(paste0(eventCol, " ~ ", timeVar))
   }
 
-  # helper to route model fitting based on incidence_model setting
-  .fit_model <- function(model_formula_input, model_type, model_data) {
-    if (!(model_type %in% c("crude", "adj"))) {
-      stop("model_type must be either 'crude' or 'adj'")
-    }
-
-    iptw_arg <- if (model_type == "adj") iptw else NULL
-
-    if (use_timevarying) {
-      # Make CONTROL the reference group so exp(groupEXPOSED) is the
-      # exposed-versus-control risk ratio for both model families.
-      tv_model_data <- as.data.frame(model_data)
-
-      primary_fit <- fitmod_gee_tv(model_formula_input,
-                                   model_type = model_type,
-                                   iptw = iptw_arg,
-                                   idCol = idCol,
-                                   aesi_name = target_aesi,
-                                   aesifup_input = tv_model_data)
-
-      # fitmod_gee_tv returns a character error message when geeglm fails.
-      # In that case, retry the same clustered/weighted model with a
-      # Poisson-log mean model. geeglm's sandwich SEs are retained.
-      if (is.character(primary_fit) && length(primary_fit) == 1L) {
-        deviation_message <- paste(
-          "Time-varying GEE model deviation for", model_type, "model,",
-          target_aesi, ": binomial-log failed; using Poisson-log fallback"
-        )
-        logger::log_info(deviation_message)
-        logger::log_info(primary_fit)
-
-        return(.fit_timevarying_poisson(
-          model_formula_input = model_formula_input,
-          model_type = model_type,
-          model_data = tv_model_data,
-          binomial_error = primary_fit
-        ))
-      }
-
-      if (inherits(primary_fit, "geeglm")) {
-        attr(primary_fit, "timevarying_family") <- "binomial"
-        attr(primary_fit, "timevarying_fallback") <- FALSE
-      }
-      return(primary_fit)
-    } else if (use_logbin) {
-      return(fitmod_logbin(model_formula_input,
-                           model_type = model_type,
-                           iptw = iptw_arg,
-                           aesi_name = target_aesi,
-                           aesifup_input = model_data))
-    } else {
-      return(fitmod_gee(model_formula_input,
-                        model_type = model_type,
-                        iptw = iptw_arg,
-                        idCol = idCol,
-                        aesi_name = target_aesi,
-                        aesifup_input = model_data))
-    }
-
-    stop("Unhandled model family / model_type combination")
-  }
-
   # Fit crude and adjusted models to extract incidence/prevalence rate in each group
   # relies on internal function defined below in this script
   # if valid fit, returns fit object
   # if not, returns character string, prints to log
   # aesifup must have person_id_num, iptw for adjusted model
   model_formula_comparative <- if (use_timevarying) model_formula_tv else model_formula
-  model_crude <- .fit_model(model_formula_input = model_formula_comparative,
-                            model_type = "crude",
-                            model_data = aesifup_input)
-  model_adj <- .fit_model(model_formula_input = model_formula_comparative,
-                          model_type = "adj",
-                          model_data = aesifup_input)
+  model_crude <- .fit_compute_rates_model(model_formula_input = model_formula_comparative,
+                                          model_type = "crude",
+                                          model_data = aesifup_input,
+                                          use_timevarying = use_timevarying,
+                                          use_logbin = use_logbin,
+                                          iptw = iptw,
+                                          idCol = idCol,
+                                          target_aesi = target_aesi)
+  model_adj <- .fit_compute_rates_model(model_formula_input = model_formula_comparative,
+                                        model_type = "adj",
+                                        model_data = aesifup_input,
+                                        use_timevarying = use_timevarying,
+                                        use_logbin = use_logbin,
+                                        iptw = iptw,
+                                        idCol = idCol,
+                                        target_aesi = target_aesi)
   # estimate prevalence ratios and
 
   # ---- incidence rate / prevalence proportion statistics -----
   # incidence rates /prevalence proportiona and CI
   # computed analytically or with help of a model (clustering)
 
-  # helper for fitting one-group models used in model-based IR estimation
-  .fit_group_model <- function(group_name, model_type) {
-    group_data <- aesifup_input[aesifup_input$group == group_name, ]
-    model_formula_group <- if (use_timevarying) model_formula_no_group_tv else model_formula_no_group
-    .fit_model(model_formula_input = model_formula_group,
-               model_type = model_type,
-               model_data = group_data)
-  }
-
   # compute rates for EXPOSED
   # if weighted IR requested, always use model based IR for exposed
   if(weighted_IR == TRUE){
-    model_adj_exposed <- .fit_group_model(group_name = "EXPOSED", model_type = "adj")
+    model_adj_exposed <- .fit_compute_rates_group_model(group_name = "EXPOSED",
+                                                        model_type = "adj",
+                                                        aesifup_input = aesifup_input,
+                                                        use_timevarying = use_timevarying,
+                                                        model_formula_no_group = model_formula_no_group,
+                                                        model_formula_no_group_tv = model_formula_no_group_tv,
+                                                        use_logbin = use_logbin,
+                                                        iptw = iptw,
+                                                        idCol = idCol,
+                                                        target_aesi = target_aesi)
     ir_list_exp <- est_inc_prev_model(model_adj_exposed, group = "EXPOSED", scale_IR = scale_IR)
 
   } else {
@@ -264,7 +325,16 @@ compute_rates_cohort <- function(aesifup_input,
   # compute rates for CONTROL
   if(model_based_control){
     control_model_type <- if (weighted_IR) "adj" else "crude"
-    model_control <- .fit_group_model(group_name = "CONTROL", model_type = control_model_type)
+    model_control <- .fit_compute_rates_group_model(group_name = "CONTROL",
+                                                    model_type = control_model_type,
+                                                    aesifup_input = aesifup_input,
+                                                    use_timevarying = use_timevarying,
+                                                    model_formula_no_group = model_formula_no_group,
+                                                    model_formula_no_group_tv = model_formula_no_group_tv,
+                                                    use_logbin = use_logbin,
+                                                    iptw = iptw,
+                                                    idCol = idCol,
+                                                    target_aesi = target_aesi)
     ir_list_con <- est_inc_prev_model(model_control, group = "CONTROL", scale_IR = scale_IR)
   } else{
     ir_list_con <- est_inc_prev(n_pat_con, n_out_con, py_con,scale_IR = scale_IR, type = type, CImethod = CImethod)
