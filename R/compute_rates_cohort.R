@@ -511,7 +511,7 @@ compute_rates_cohort <- function(aesifup_input,
 
   if (use_timevarying) {
     return(data.table::data.table(
-      estimates = ests_out,
+      ests_out,
       pred_prob_crude = list(.predict_timevarying_probabilities(
         fit = model_crude,
         model_data = aesifup_input,
