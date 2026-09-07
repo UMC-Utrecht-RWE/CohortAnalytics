@@ -13,7 +13,7 @@ compute_prev_rates(
   adjust = "adj",
   scale_IR = 1,
   estimate_survival = FALSE,
-  survival_input = NULL
+  fupCol
 )
 }
 \arguments{
@@ -31,7 +31,7 @@ compute_prev_rates(
 
 \item{estimate_survival}{TRUE/FALSE whether to apply survival model}
 
-\item{survival_input}{list of input for fitting 1-KM model and hazard ratio}
+\item{fupCol}{column name with follow up time, to be used in survival model}
 }
 \description{
 rates, ratios and differences

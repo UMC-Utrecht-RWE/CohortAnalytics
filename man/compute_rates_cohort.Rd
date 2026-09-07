@@ -12,6 +12,9 @@ compute_rates_cohort(
   pyr_offset = "pyr_offset",
   eventCol = "eventCount",
   iptw = "ip_weight",
+  idCol = "person_id_num",
+  timeVar = NULL,
+  incidence_model = "gee",
   target_aesi,
   type = "incidence",
   CImethod = "wilson",
@@ -39,13 +42,23 @@ compute_rates_cohort(
 
 \item{iptw}{name column containing (ipt or other) weights to be used in the analysis}
 
+\item{idCol}{name of person identifier column used for clustered models. defaults to "person_id_num"}
+
+\item{timeVar}{optional name of time index column for time-varying models}
+
+\item{incidence_model}{comparative model for non-survival incidence analyses.
+defaults to "gee"; set to "logbinomial" to use \code{fitmod_logbin} with
+\code{extract_ests_logbin}, or to "timevarying" to use \code{fitmod_gee_tv}.}
+
 \item{target_aesi}{character string giving name of the outcome variable, for informative logging}
 
 \item{type}{"incidence" or "prevalence", defining if incidence rates or prevalenes are to be computed}
 
 \item{CImethod}{defaults to "wilson"; option passed to \code{est_inc_prev} defining formula for analytic CI computation}
 
-\item{risk_type}{defaults "survival". if set to survival, function outputs 1-KM risk differences and ratios. Otherwise prevalence/incidence ratios and differences, as specified by \code{type}}
+\item{risk_type}{defaults "survival". If set to "survival", function outputs
+1-KM risk differences and hazard ratios. Otherwise prevalence/incidence
+ratios and differences are estimated from GEE models.}
 
 \item{CumulativeInc}{TRUE/FALSE, compute cumulative incidences using 1-KM. If not, skip and return -99 flag}
 
