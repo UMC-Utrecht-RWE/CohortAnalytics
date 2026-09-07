@@ -14,14 +14,16 @@
 #' @return A data.table with one row per observed time value and summary
 #'   statistics for the treated and untreated predicted probabilities.
 #' @keywords internal
-.predict_timevarying_probabilities <- function(fit,
-                                               model_data,
-                                               timeVar,
-                                               idCol = "person_id_num",
-                                               group_col = "group",
-                                               treated_group = "EXPOSED",
-                                               untreated_group = "CONTROL",
-                                               conf_level = 0.95) {
+.predict_timevarying_probabilities <- function(
+    fit,
+    model_data,
+    timeVar,
+    idCol = "person_id_num",
+    group_col = "group",
+    treated_group = "EXPOSED",
+    untreated_group = "CONTROL",
+    conf_level = 0.95) {
+
   if (is.character(fit)) {
     return(.empty_timevarying_prediction_table(timeVar = timeVar))
   }
@@ -37,105 +39,186 @@
   }
 
   month_values <- sort(unique(df[[timeVar]][!is.na(df[[timeVar]])]))
+
   if (length(month_values) == 0) {
     return(.empty_timevarying_prediction_table(timeVar = timeVar))
   }
 
+  # Number of observations per month and treatment group
   treated_counts <- vapply(
     month_values,
     function(month_value) {
-      sum(df[[timeVar]] == month_value & df[[group_col]] == treated_group, na.rm = TRUE)
+      sum(
+        df[[timeVar]] == month_value &
+          df[[group_col]] == treated_group,
+        na.rm = TRUE
+      )
     },
     integer(1)
   )
+
   untreated_counts <- vapply(
     month_values,
     function(month_value) {
-      sum(df[[timeVar]] == month_value & df[[group_col]] == untreated_group, na.rm = TRUE)
+      sum(
+        df[[timeVar]] == month_value &
+          df[[group_col]] == untreated_group,
+        na.rm = TRUE
+      )
     },
     integer(1)
   )
 
-  prediction_template <- df[rep(1, length(month_values) * 2L), , drop = FALSE]
-  prediction_template[[timeVar]] <- rep(month_values, times = 2L)
+  # ------------------------------------------------------------------
+  # Prediction template:
+  # one row for every time value x treatment group combination
+  # ------------------------------------------------------------------
 
-  if (is.factor(df[[group_col]])) {
-    prediction_template[[group_col]] <- factor(
-      rep(c(treated_group, untreated_group), each = length(month_values)),
-      levels = levels(df[[group_col]])
+  prediction_template <- data.table::data.table(
+    id = seq_len(2L * length(month_values))
+  )
+
+  prediction_template[[timeVar]] <- rep(
+    month_values,
+    times = 2L
+  )
+
+  prediction_template[[group_col]] <- factor(
+    rep(
+      c(treated_group, untreated_group),
+      each = length(month_values)
+    ),
+    levels = levels(df[[group_col]])
+  )
+
+  # Preserve factor levels for the time variable if it is a factor
+  if (is.factor(df[[timeVar]])) {
+    prediction_template[[timeVar]] <- factor(
+      prediction_template[[timeVar]],
+      levels = levels(df[[timeVar]])
     )
-  } else {
-    prediction_template[[group_col]] <- rep(c(treated_group, untreated_group), each = length(month_values))
   }
 
-  predicted_values <- tryCatch(
-    stats::predict(fit, newdata = prediction_template, type = "response"),
-    error = function(cond) cond
+  # ------------------------------------------------------------------
+  # Prediction on LINK scale
+  #
+  # For a log-binomial model:
+  #
+  #     eta = log(p)
+  #
+  # ------------------------------------------------------------------
+
+  eta <- stats::predict(
+    fit,
+    newdata = prediction_template,
+    type = "link"
   )
 
-  if (inherits(predicted_values, "error")) {
-    return(.empty_timevarying_prediction_table(timeVar = timeVar))
-  }
+  eta <- as.numeric(eta)
 
-  link_values <- tryCatch(
-    stats::predict(fit, newdata = prediction_template, type = "link"),
-    error = function(cond) cond
+  # ------------------------------------------------------------------
+  # Design matrix for new observations
+  # ------------------------------------------------------------------
+
+  Xnew <- stats::model.matrix(
+    stats::delete.response(stats::terms(fit)),
+    prediction_template,
+    contrasts.arg = fit$contrasts
   )
 
-  vcov_mat <- tryCatch(stats::vcov(fit), error = function(cond) NULL)
-  if (is.null(vcov_mat) && !is.null(fit$var)) {
-    vcov_mat <- fit$var
+  # Make sure columns have exactly the same order as coefficients
+  coef_names <- names(stats::coef(fit))
+
+  missing_coef <- setdiff(coef_names, colnames(Xnew))
+
+  if (length(missing_coef) > 0L) {
+    stop(
+      paste0(
+        "Prediction design matrix is missing coefficient columns: ",
+        paste(missing_coef, collapse = ", ")
+      )
+    )
   }
 
-  se_link <- rep(NA_real_, length(predicted_values))
-  z_value <- stats::qnorm(1 - (1 - conf_level) / 2)
+  Xnew <- Xnew[, coef_names, drop = FALSE]
 
-  if (!inherits(link_values, "error") && !is.null(vcov_mat)) {
-    model_terms <- stats::delete.response(stats::terms(fit))
-    model_matrix <- stats::model.matrix(object = model_terms,
-                                        data = prediction_template,
-                                        contrasts.arg = fit$contrasts)
+  # ------------------------------------------------------------------
+  # Robust covariance matrix of GEE coefficients
+  # ------------------------------------------------------------------
 
-    vcov_mat <- vcov_mat[colnames(model_matrix), colnames(model_matrix), drop = FALSE]
-    se_link <- sqrt(pmax(rowSums((model_matrix %*% vcov_mat) * model_matrix), 0))
-  }
+  V <- stats::vcov(fit)
 
-  prediction_se <- predicted_values * se_link
-  ci_lb <- if (inherits(link_values, "error")) {
-    rep(NA_real_, length(predicted_values))
-  } else {
-    exp(link_values - z_value * se_link)
-  }
-  ci_ub <- if (inherits(link_values, "error")) {
-    rep(NA_real_, length(predicted_values))
-  } else {
-    exp(link_values + z_value * se_link)
-  }
+  V <- V[
+    coef_names,
+    coef_names,
+    drop = FALSE
+  ]
 
-  month_count <- length(month_values)
-  treated_predictions <- predicted_values[seq_len(month_count)]
-  untreated_predictions <- predicted_values[month_count + seq_len(month_count)]
-  treated_se <- prediction_se[seq_len(month_count)]
-  untreated_se <- prediction_se[month_count + seq_len(month_count)]
-  treated_ci_lb <- ci_lb[seq_len(month_count)]
-  treated_ci_ub <- ci_ub[seq_len(month_count)]
-  untreated_ci_lb <- ci_lb[month_count + seq_len(month_count)]
-  untreated_ci_ub <- ci_ub[month_count + seq_len(month_count)]
+  # ------------------------------------------------------------------
+  # Standard error on LINK scale:
+  #
+  # SE(eta) = sqrt(x' V x)
+  # ------------------------------------------------------------------
 
-  prediction_summary <- data.table::data.table(
-    time_value = month_values,
-    treated_n = treated_counts,
-    treated_mean = treated_predictions,
-    treated_sd = treated_se,
-    treated_ci_lb = treated_ci_lb,
-    treated_ci_ub = treated_ci_ub,
-    untreated_n = untreated_counts,
-    untreated_mean = untreated_predictions,
-    untreated_sd = untreated_se,
-    untreated_ci_lb = untreated_ci_lb,
-    untreated_ci_ub = untreated_ci_ub
+  se_eta <- sqrt(
+    rowSums(
+      (Xnew %*% V) * Xnew
+    )
   )
 
-  data.table::setnames(prediction_summary, "time_value", timeVar)
-  prediction_summary
+  # ------------------------------------------------------------------
+  # Convert from log scale to probability scale
+  #
+  # log(p) = eta
+  # p      = exp(eta)
+  # ------------------------------------------------------------------
+
+  predicted_prob <- exp(eta)
+
+  # ------------------------------------------------------------------
+  # Delta-method SE on probability scale
+  #
+  # If:
+  #
+  #     p = exp(eta)
+  #
+  # then:
+  #
+  #     dp/deta = exp(eta) = p
+  #
+  # therefore:
+  #
+  #     SE(p) ≈ p * SE(eta)
+  # ------------------------------------------------------------------
+
+  prediction_se <- predicted_prob * se_eta
+
+  # ------------------------------------------------------------------
+  # Confidence interval
+  #
+  # Construct CI on log/link scale first, then transform.
+  # ------------------------------------------------------------------
+
+  z_value <- stats::qnorm(
+    1 - (1 - conf_level) / 2
+  )
+
+  lower_eta <- eta - z_value * se_eta
+  upper_eta <- eta + z_value * se_eta
+
+  ci_lb <- exp(lower_eta)
+  ci_ub <- exp(upper_eta)
+
+  # ------------------------------------------------------------------
+  # Store prediction components
+  # ------------------------------------------------------------------
+  prediction_template[, `:=`(
+    n = c(treated_counts, untreated_counts),
+    mean = predicted_prob,
+    se = prediction_se,
+    ci_lb = ci_lb,
+    ci_ub = ci_ub
+  )]
+
+  prediction_template
 }
