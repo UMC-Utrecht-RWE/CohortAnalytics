@@ -139,6 +139,10 @@ compute_rates_cohort <- function(aesifup_input,
     if (is.null(timeVar) || !(timeVar %in% names(aesifup_input))) {
       stop("When incidence_model = 'timevarying', provide a valid timeVar column name")
     }
+    if (!is.factor(aesifup_input[[timeVar]])) {
+      logger::log_warn("timeVar column is not a factor, coercing to factor for time-varying model")
+      aesifup_input[[timeVar]] <- as.factor(aesifup_input[[timeVar]])
+    }
     model_formula_tv <- as.formula(paste0(eventCol, " ~ group + ", timeVar))
     model_formula_no_group_tv <- as.formula(paste0(eventCol, " ~ ", timeVar))
   }
