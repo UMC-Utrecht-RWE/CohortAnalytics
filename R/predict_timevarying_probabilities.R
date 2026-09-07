@@ -212,7 +212,8 @@
   # ------------------------------------------------------------------
   # Store prediction components
   # ------------------------------------------------------------------
-  prediction_template[, `:=`(
+  prediction_summary <- data.table::copy(prediction_template)
+  prediction_summary[, `:=`(
     n = c(treated_counts, untreated_counts),
     mean = predicted_prob,
     se = prediction_se,
@@ -220,5 +221,5 @@
     ci_ub = ci_ub
   )]
 
-  prediction_template
+  return(prediction_summary[])
 }
