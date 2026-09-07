@@ -14,6 +14,9 @@
 #' @return A data.table with one row per observed time value and summary
 #'   statistics for the treated and untreated predicted probabilities.
 #' @keywords internal
+#' @importFrom data.table data.table `:=`
+NULL
+#' @export
 .predict_timevarying_probabilities <- function(
     fit,
     model_data,
