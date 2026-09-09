@@ -34,6 +34,8 @@
 #' @param output_format defaults to `data.table`, otherwise returns data.frame.
 #' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed
 #' @param unique_person_cols optional character vector of column names to be used to identify unique patients in the dataset. If not specified, counts of patients will be based on number of rows in the dataset. If specified, counts of patients will be based on number of unique combinations of values in these columns.
+#' @param model_library character string; defaults to "geeM". Specifies model library to use for rate estimation: "geeM" for geeM::geem (GEE Poisson with robust SEs), or "bigglm" for biglm::bigglm (Poisson GLM with chunking and sandwich robust SEs, fallback option for large datasets)
+#' @param chunksize integer; defaults to 100000. Chunk size for biglm processing when model_library="bigglm". Larger chunks are faster but use more memory; smaller chunks use less memory but may be slower.
 #'
 #' @export
 compute_rates_cohort <- function(aesifup_input,
@@ -54,7 +56,9 @@ compute_rates_cohort <- function(aesifup_input,
                                  end_risk,
                                  output_format = "data.table",
                                  minimum_count_for_comparative = 3,
-                                 unique_person_cols = NULL) {
+                                 unique_person_cols = NULL,
+                                 model_library = "geeM",
+                                 chunksize = 100000) {
   # aesifup_input = aesifup_input_tmp
   # # global settings
   # fupCol
@@ -123,11 +127,11 @@ compute_rates_cohort <- function(aesifup_input,
   # aesifup must have person_id_num, iptw for adjusted model
   model_crude <- fitmod_gee(model_formula,
     model_type = "crude", aesi_name = target_aesi,
-    aesifup_input = aesifup_input
+    aesifup_input = aesifup_input, model_library = model_library, chunksize = chunksize
   )
   model_adj <- fitmod_gee(model_formula,
     model_type = "adj", iptw = iptw, aesi_name = target_aesi,
-    aesifup_input = aesifup_input
+    aesifup_input = aesifup_input, model_library = model_library, chunksize = chunksize
   )
   # estimate prevalence ratios and
 
@@ -142,7 +146,8 @@ compute_rates_cohort <- function(aesifup_input,
       model_type = "adj",
       iptw = iptw,
       aesi_name = target_aesi,
-      aesifup_input = aesifup_input[aesifup_input$group == "EXPOSED", ]
+      aesifup_input = aesifup_input[aesifup_input$group == "EXPOSED", ],
+      model_library = model_library, chunksize = chunksize
     )
     ir_list_exp <- est_inc_prev_model(model_adj_exposed, group = "EXPOSED", scale_IR = scale_IR)
   } else {
@@ -156,14 +161,16 @@ compute_rates_cohort <- function(aesifup_input,
         model_type = "adj",
         iptw = iptw,
         aesi_name = target_aesi,
-        aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ]
+        aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ],
+        model_library = model_library, chunksize = chunksize
       )
       ir_list_con <- est_inc_prev_model(model_adj_control, group = "CONTROL", scale_IR = scale_IR)
     } else {
       model_crude_control <- fitmod_gee(model_formula_no_group,
         model_type = "crude",
         aesi_name = target_aesi,
-        aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ]
+        aesifup_input = aesifup_input[aesifup_input$group == "CONTROL", ],
+        model_library = model_library, chunksize = chunksize
       )
       ir_list_con <- est_inc_prev_model(model_crude_control, group = "CONTROL", scale_IR = scale_IR)
     }
