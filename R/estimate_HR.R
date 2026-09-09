@@ -1,45 +1,85 @@
 # ---- function to estimate hazard ratios -------------
 # returns dummy output if not possible to estimate
+#' Estimate hazard ratios using Cox proportional hazards model
+#'
+#' @param aesifup_input data
+#' @param fupCol column name of follow up time, to be used in survival model
+#' @param eventCol event column name
+#' @param groupCol column identifying exposed/control group
+#' @param iptw column name of inverse probability weight
+#' @param model_type weighted or crude
+#' @param return_dummy_output TRUE/FALSE whether to return a dummy output
+#' @param aesi_name outcome label
+#' @param dummy_code use code instead of NA
+#' @export
+
 estimate_HR <- function(aesifup_input, fupCol = "fup",
                         eventCol = "eventCount",
+                        groupCol = "group",
                         iptw = "ip_weights",
                         model_type = "crude",
                         return_dummy_output = FALSE,
-                        aesi_name = ""){
-
-  dummy_output <- data.frame(hr_est = -88, hr_lb = -88, hr_ub = -88)
-  if(return_dummy_output == TRUE){
-
+                        aesi_name = "",
+                        dummy_code = -88) {
+  dummy_output <- data.frame(hr_est = dummy_code, hr_lb = dummy_code, hr_ub = dummy_code)
+  if (return_dummy_output == TRUE) {
     return(dummy_output)
   }
 
   # check if non-zero events in both groups, return dummy output
-  eventsums <- aesifup_input[,sum(get(eventCol)), by = group]
-  if(!any(eventsums[,2]> 0)){
-    zero_groups <- paste0(as.character(eventsums[V1 == 0]$group), collapse = ",")
-    logger::log_info(paste0(
-      "HR model estimation fails, zero events in groups ", zero_groups)
-    )
+# check if non-zero events in both groups, return dummy output
+dt <- data.table::as.data.table(aesifup_input)
+
+tmp <- data.frame(
+  group_val = dt[[groupCol]],
+  event_val = dt[[eventCol]]
+)
+
+eventsums <- stats::aggregate(
+  event_val ~ group_val,
+  data = tmp,
+  FUN = function(x) sum(x, na.rm = TRUE)
+)
+
+names(eventsums) <- c(groupCol, "event_sum")
+
+if (nrow(eventsums) == 0 || !any(eventsums$event_sum > 0)) {
+  zero_groups <- paste0(as.character(eventsums[eventsums$event_sum == 0, groupCol]), collapse = ",")
+  logger::log_info(paste0("HR model estimation fails, zero events in groups ", zero_groups))
+  return(dummy_output)
+}
+
+  # fit coxmodel
+  model_formula <- as.formula(paste0("survival::Surv(", fupCol, ",", eventCol, ") ~ ", groupCol))
+  modelobj <- fitmod_cox(model_formula,
+    iptw = iptw,
+    model_type = model_type, aesi_name = aesi_name, aesifup_input
+  )
+
+
+  # if model fitting returned logger object or not a coxph, return dummy output
+  if (!inherits(modelobj, "coxph")) {
     return(dummy_output)
   }
 
-  # fit coxmodel
-  model_formula <- as.formula(paste0("survival::Surv(",fupCol, ",",eventCol,") ~ group"))
-  modelobj <- fitmod_cox(model_formula, iptw = iptw,
-                         model_type = model_type,aesi_name = aesi_name,aesifup_input)
 
   # if model fitting error, return error flag
 
-  if(is.character(modelobj)){ return(dummy_output) }
+  if (is.character(modelobj)) {
+    return(dummy_output)
+  }
 
   # get coefficients
   coxcoef <- summary(modelobj)$coefficients
   hr_est <- coxcoef[colnames(coxcoef) == "coef"]
   hr_se <- coxcoef[colnames(coxcoef) == "robust se"]
+  if (length(hr_se) == 0) {
+    hr_se <- 0
+  }
 
   # get confidence interval
-  hr_lb <- hr_est + qnorm(0.025)*hr_se
-  hr_ub <- hr_est + qnorm(0.975)*hr_se
+  hr_lb <- hr_est + qnorm(0.025) * hr_se
+  hr_ub <- hr_est + qnorm(0.975) * hr_se
 
   # exponentiate
   hr_est <- exp(hr_est)
@@ -49,4 +89,3 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   # return object
   return(data.frame(hr_est = hr_est, hr_lb = hr_lb, hr_ub = hr_ub))
 }
-
