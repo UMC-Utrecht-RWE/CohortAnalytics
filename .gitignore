@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
+.vscode/*
+.DS_Store

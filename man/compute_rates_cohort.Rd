@@ -23,7 +23,10 @@ compute_rates_cohort(
   weighted_IR = FALSE,
   end_risk,
   output_format = "data.table",
-  minimum_count_for_comparative = 3
+  minimum_count_for_comparative = 3,
+  unique_person_cols = NULL,
+  model_library = "geeM",
+  chunksize = 1e+05
 )
 }
 \arguments{
@@ -57,9 +60,17 @@ compute_rates_cohort(
 
 \item{weighted_IR}{use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)}
 
+\item{end_risk}{end of risk period for computing cumulative incidence}
+
 \item{output_format}{defaults to \code{data.table}, otherwise returns data.frame.}
 
 \item{minimum_count_for_comparative}{defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed}
+
+\item{unique_person_cols}{optional character vector of column names to be used to identify unique patients in the dataset. If not specified, counts of patients will be based on number of rows in the dataset. If specified, counts of patients will be based on number of unique combinations of values in these columns.}
+
+\item{model_library}{character string; defaults to "geeM". Specifies model library to use for rate estimation: "geeM" for geeM::geem (GEE Poisson with robust SEs), or "bigglm" for biglm::bigglm (Poisson GLM with chunking and sandwich robust SEs, fallback option for large datasets)}
+
+\item{chunksize}{integer; defaults to 100000. Chunk size for biglm processing when model_library="bigglm". Larger chunks are faster but use more memory; smaller chunks use less memory but may be slower.}
 }
 \description{
 Wrapper function to compute statistics relating to incidence, prevalences and risks (ratios and differences)

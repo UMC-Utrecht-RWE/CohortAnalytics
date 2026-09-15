@@ -4,17 +4,27 @@
 # feeds this model to est_km function for vector of timepoints
 # returns 1-KM scaled with scale_IR, with lower and upper bounds
 # collects aesi name, time, exposed and control risks into one table
-
+#' Create risk table using Kaplan-Meier estimates
+#'
+#' @param aesifup data
+#' @param timepoints a vector of time to be used in survival model
+#' @param fupCol column name of follow up time, to be used in survival model
+#' @param eventCol event column name
+#' @param use_weights TRUE/FALSE
+#' @param iptw column name of inverse probability weight
+#' @param scale_IR report rate to multiply by this scale
+#' @param comparison_measures TRUE means risk rate will be compared with control group
+#' @param dummy_code use code to fill NA values
+#' @export
 create_risk_table <- function(aesifup,
                               timepoints,
                               fupCol = "fup",
                               eventCol = "eventCount",
                               use_weights = TRUE,
                               iptw = "ip_weight",
-                              target_aesi,
                               scale_IR = 10000,
-                              end_risk,
-                              comparison_measures = TRUE){
+                              comparison_measures = TRUE,
+                              dummy_code = -99){
   # aesifup <- aesifup_input_tmp
   # timepoints = max_fuptime
   # target_aesi = target_aesi
@@ -27,13 +37,13 @@ create_risk_table <- function(aesifup,
 
   # if no data, return NA flags
   if(nrow(aesifup) == 0){
-    return(data.frame(time =-99,
-                      "cuminc_est_exp" = -99,
-                      "cuminc_lb_exp"  = -99,
-                      "cuminc_ub_exp" = -99,
-                      "cuminc_est_con" = -99,
-                      "cuminc_lb_con" = -99,
-                      "cuminc_ub_con" = -99))
+    return(data.frame(time =dummy_code,
+                      "cuminc_est_exp" = dummy_code,
+                      "cuminc_lb_exp"  = dummy_code,
+                      "cuminc_ub_exp" = dummy_code,
+                      "cuminc_est_con" = dummy_code,
+                      "cuminc_lb_con" = dummy_code,
+                      "cuminc_ub_con" = dummy_code))
   } else {
     if(comparison_measures){
 
@@ -41,15 +51,24 @@ create_risk_table <- function(aesifup,
       dfexp <- copy(aesifup[aesifup$group == "EXPOSED",])
       dfcon <- copy(aesifup[aesifup$group == "CONTROL",])
 
+      # extract column vectors once
+      fup_vec_exp <- dfexp[[fupCol]]
+      event_vec_exp <- dfexp[[eventCol]]
+      wt_vec_exp <- dfexp[[iptw]]
+      
+      fup_vec_con <- dfcon[[fupCol]]
+      event_vec_con <- dfcon[[eventCol]]
+      wt_vec_con <- dfcon[[iptw]]
+
       if(nrow(dfexp) != 0){
         if(use_weights == TRUE){
           # fit survival model adjusting using weights
-          kmexp <- survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                     cluster = person_id, robust = T, data = dfexp,
-                                     weights = get(iptw))
+          kmexp <- survival::survfit(survival::Surv(fup_vec_exp, event_vec_exp)~1,
+                                     cluster = dfexp$person_id, robust = T,
+                                     weights = wt_vec_exp)
         }else{
-          kmexp <- survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                     cluster = person_id, robust = T, data = dfexp)
+          kmexp <- survival::survfit(survival::Surv(fup_vec_exp, event_vec_exp)~1,
+                                     cluster = dfexp$person_id, robust = T)
         }
 
         # obtain risks at each timepoint of interest, scaled appropriately
@@ -58,7 +77,7 @@ create_risk_table <- function(aesifup,
                                                  simplify = FALSE)))
       } else {
         risk_exp <- data.frame(
-          time = -99,
+          time = dummy_code,
           cuminc_est = 0,
           cuminc_lb = 0,
           cuminc_ub = 0
@@ -68,19 +87,19 @@ create_risk_table <- function(aesifup,
       # repeat for controls
       if(nrow(dfcon) != 0){
         if(use_weights == TRUE){
-          kmcon <-  survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                      id = person_id, robust = T, data = dfcon,
-                                      weights = get(iptw))
+          kmcon <- survival::survfit(survival::Surv(fup_vec_con, event_vec_con)~1,
+                                     id = dfcon$person_id, robust = T,
+                                     weights = wt_vec_con)
         }else{
-          kmcon <-  survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                      id = person_id, robust = T, data = dfcon)
+          kmcon <- survival::survfit(survival::Surv(fup_vec_con, event_vec_con)~1,
+                                     id = dfcon$person_id, robust = T)
         }
         risk_con <- as.data.frame(do.call("rbind",
                                           sapply(timepoints, function(s) est_km(kmcon, s, per_pyr = scale_IR),
                                                  simplify = FALSE)))
       } else {
         risk_con <- data.frame(
-          time = -99,
+          time = dummy_code,
           cuminc_est = 0,
           cuminc_lb = 0,
           cuminc_ub = 0
@@ -91,15 +110,19 @@ create_risk_table <- function(aesifup,
     } else if (!comparison_measures){
       # split file into control and exposed part
       dfexp <- copy(aesifup)
+      
+      fup_vec <- dfexp[[fupCol]]
+      event_vec <- dfexp[[eventCol]]
+      wt_vec <- dfexp[[iptw]]
 
       if(use_weights == TRUE){
         # fit survival model adjusting using weights
-        kmexp <- survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                   cluster = person_id, robust = T, data = dfexp,
-                                   weights = get(iptw))
+        kmexp <- survival::survfit(survival::Surv(fup_vec, event_vec)~1,
+                                   cluster = dfexp$person_id, robust = T,
+                                   weights = wt_vec)
       }else{
-        kmexp <- survival::survfit(survival::Surv(get(fupCol), get(eventCol))~1,
-                                   cluster = person_id, robust = T, data = dfexp)
+        kmexp <- survival::survfit(survival::Surv(fup_vec, event_vec)~1,
+                                   cluster = dfexp$person_id, robust = T)
       }
       # obtain risks at each timepoint of interest, scaled appropriately
       risk_exp <- as.data.frame(do.call("rbind",
@@ -112,9 +135,9 @@ create_risk_table <- function(aesifup,
                          "cuminc_est_exp" = risk_exp$cuminc_est,
                          "cuminc_lb_exp"  = risk_exp$cuminc_lb,
                          "cuminc_ub_exp" = risk_exp$cuminc_ub,
-                         "cuminc_est_con"  = ifelse(comparison_measures, risk_con$cuminc_est, -99),
-                         "cuminc_lb_con" = ifelse(comparison_measures, risk_con$cuminc_lb, -99),
-                         "cuminc_ub_con" = ifelse(comparison_measures, risk_con$cuminc_ub, -99))
+                         "cuminc_est_con"  = ifelse(comparison_measures, risk_con$cuminc_est, dummy_code),
+                         "cuminc_lb_con" = ifelse(comparison_measures, risk_con$cuminc_lb, dummy_code),
+                         "cuminc_ub_con" = ifelse(comparison_measures, risk_con$cuminc_ub, dummy_code))
   }
   return(output)
 }
