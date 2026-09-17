@@ -30,14 +30,13 @@
 #' @param scale_IR what scaling to perform for incidence/prevalence, i.e., events per X. Defaults to 10000
 #' @param model_based_control TRUE/FALSE. Use GEE to estimate incidence/prevalence in the control group (TRUE) or an analytic formula that assumes independent observations (FALSE)
 #' @param weighted_IR use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)
-#' @param end_risk
+#' @param end_risk end of risk period
 #' @param output_format defaults to `data.table`, otherwise returns data.frame.
 #' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed
 #'
-#' @returns
+#' @returns cohort analytic statistics
 #' @export
 #'
-#' @examples
 compute_rates_cohort <- function(aesifup_input,
                                  fupCol = "fup",
                                  pyrCol = "pyr",
@@ -98,8 +97,8 @@ compute_rates_cohort <- function(aesifup_input,
   # with GEE model-based approahces incidence vs prevalence is determined by the offset
   # incidence - offset = log(pyr)
   # prevalence - offset = 1
-  model_formula <- as.formula(paste0(eventCol, " ~ group + offset(",pyr_offset,")"))
-  model_formula_no_group <- as.formula(paste0(eventCol, " ~ offset(",pyr_offset,")"))
+  model_formula <- stats::as.formula(paste0(eventCol, " ~ group + offset(",pyr_offset,")"))
+  model_formula_no_group <- stats::as.formula(paste0(eventCol, " ~ offset(",pyr_offset,")"))
 
   # Fit crude and adjusted models to extract incidence/prevalence rate in each group
   # relies on internal function defined below in this script
@@ -290,13 +289,13 @@ compute_rates_cohort <- function(aesifup_input,
                                 rr_lb_adj = -88,
                                 rr_ub_adj = -88)
         } else {
-          crude_hr  <- estimate_HR(aesifup = aesifup_input, fupCol = fupCol,
+          crude_hr  <- estimate_HR(aesifup_input = aesifup_input, fupCol = fupCol,
                                    eventCol = eventCol,
                                    iptw = iptw,
                                    model_type = "crude",
                                    aesi_name = target_aesi)
 
-          adj_hr  <- estimate_HR(aesifup = aesifup_input, fupCol = fupCol,
+          adj_hr  <- estimate_HR(aesifup_input = aesifup_input, fupCol = fupCol,
                                  eventCol = eventCol,
                                  iptw = iptw,
                                  model_type = "adj",

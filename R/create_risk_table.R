@@ -138,7 +138,7 @@ est_km <- function(fit, ndaystotimepoint, days_to_years = FALSE, per_pyr = 1){
 
   if(!is.null(ndaystotimepoint)){
 
-    if(last(fit$time) >= ndaystotimepoint & min(fit$time) < ndaystotimepoint) { #if not met, we do not show the results
+    if(data.table::last(fit$time) >= ndaystotimepoint & min(fit$time) < ndaystotimepoint) { #if not met, we do not show the results
       here <- which(fit$time == max(fit$time[fit$time <= ndaystotimepoint]))
       rsk <- (1 - fit$surv[!is.na(fit$surv)][here])
       rsk.lb <- (1 - fit$upper[!is.na(fit$surv)][here])
@@ -156,9 +156,9 @@ est_km <- function(fit, ndaystotimepoint, days_to_years = FALSE, per_pyr = 1){
 
   } else if (is.null(ndaystotimepoint)){
     time_out <- 9999
-    rsk <- (1 - last(fit$surv[!is.na(fit$surv)]))
-    rsk.lb <- (1 - last(fit$upper[!is.na(fit$surv)]))
-    rsk.ub <- (1 - last(fit$lower[!is.na(fit$surv)]))
+    rsk <- (1 - data.table::last(fit$surv[!is.na(fit$surv)]))
+    rsk.lb <- (1 - data.table::last(fit$upper[!is.na(fit$surv)]))
+    rsk.ub <- (1 - data.table::last(fit$lower[!is.na(fit$surv)]))
   }
 
   if (rsk.lb < 0 & !is.na(rsk.lb)) rsk.lb <- 0

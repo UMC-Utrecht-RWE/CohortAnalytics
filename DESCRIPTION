@@ -11,6 +11,7 @@ Imports:
     survival,
     geeM,
     msm,
-    logger
+    logger,
+    data.table
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3
