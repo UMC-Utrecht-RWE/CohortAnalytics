@@ -37,8 +37,8 @@ extract_ests_gee <- function(
 
   # collect parameters
   par_ests <- data.frame(irr_est = group_par,
-                         irr_lb = group_par + qnorm(0.025)*group_se,
-                         irr_ub = group_par + qnorm(0.975)*group_se
+                         irr_lb = group_par + stats::qnorm(0.025)*group_se,
+                         irr_ub = group_par + stats::qnorm(0.975)*group_se
   )
 
   # take exponential to get rate ratios
@@ -46,10 +46,10 @@ extract_ests_gee <- function(
 
   # ---- calculate risk differences using delta method ----
   rd_est <- exp(int_par + group_par) - exp(int_par)
-  rd_se <- msm::deltamethod(~exp(x1 + x2) - exp(x1), coef(modelobj),  modelobj$var)
+  rd_se <- msm::deltamethod(~exp(x1 + x2) - exp(x1), stats::coef(modelobj),  modelobj$var)
   rd_out <- data.frame(rd_est = rd_est,
-                       rd_lb = rd_est + qnorm(0.025)*rd_se,
-                       rd_ub = rd_est + qnorm(0.975)*rd_se)*scale_IR
+                       rd_lb = rd_est + stats::qnorm(0.025)*rd_se,
+                       rd_ub = rd_est + stats::qnorm(0.975)*rd_se)*scale_IR
 
   # save and process output object
   outobj <- data.frame(rr_out, rd_out)

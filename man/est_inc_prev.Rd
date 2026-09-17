@@ -26,6 +26,9 @@ est_inc_prev(
 
 \item{CImethod}{"wilson" or "clopper" based estimation of CIs}
 }
+\value{
+estimate of incidence/prevalence and CIs
+}
 \description{
 Title
 }

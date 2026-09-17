@@ -12,7 +12,7 @@ process_cohort_data <- function(aesifup,
   set(aesifup, j = "group", value = as.factor(aesifup[["group"]]))
   set(aesifup,
       j = "group",
-      value = relevel(aesifup[["group"]], ref = "CONTROL"))
+      value = stats::relevel(aesifup[["group"]], ref = "CONTROL"))
   # 2. create numeric person id column
   # necessary for proper functioning of geepack::geeglm()
   aesifup[, person_id_num := as.numeric(as.factor(person_id))]
