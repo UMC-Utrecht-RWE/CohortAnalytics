@@ -2,3 +2,7 @@
 
 export(compute_rates_cohort)
 export(est_inc_prev)
+import(data.table)
+importFrom(data.table,":=")
+importFrom(data.table,.N)
+importFrom(data.table,.SD)
