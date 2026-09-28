@@ -11,10 +11,9 @@
 #' @param type "incidence" or "prevalence"
 #' @param CImethod "wilson" or "clopper" based estimation of CIs
 #'
-#' @returns
+#' @returns estimate of incidence/prevalence and CIs
 #' @export
 #'
-#' @examples
 est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", CImethod = NULL){
   #CImethod required for prevalence CIs
   # n_pat = n_pat_exp
@@ -29,14 +28,14 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
     if(is.null(py)){stop("for incidence calculation, py must be non-NULL")}
     # incidence CI using dobson formula
     ir <- n_out/py
-    lb_ir <- max(0,((qchisq(0.025, df=(2*n_out)))/2)/py)
-    ub_ir <- (qchisq(0.975, df=(2*(n_out+1)))/2)/py
+    lb_ir <- max(0,((stats::qchisq(0.025, df=(2*n_out)))/2)/py)
+    ub_ir <- (stats::qchisq(0.975, df=(2*(n_out+1)))/2)/py
   }
 
   if(type == "prevalence"){
     # prevalence using clopper formula
     if(CImethod == "clopper"){
-      test_out <- binom.test(n_out, n_pat)
+      test_out <- stats::binom.test(n_out, n_pat)
       lb_ir <- test_out$conf.int[1]
       ub_ir <- test_out$conf.int[2]
       ir <- test_out$estimate
@@ -44,7 +43,7 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
     # prevalence using wilson formula
     if(CImethod == "wilson"){
       ir <- n_out / n_pat
-      z <- qnorm(0.975)  # z-score for 95% CI
+      z <- stats::qnorm(0.975)  # z-score for 95% CI
       denom <- 1 + (z^2 / n_pat)
       term1 <- ir + (z^2 / (2 * n_pat))
       term2 <- z * sqrt((ir * (1 - ir) / n_pat) + (z^2 / (4 * n_pat^2)))
@@ -76,8 +75,8 @@ est_inc_prev_model <- function(modelobj, group, scale_IR){
   # collect parameters
   if(group == "CONTROL"){
     ir <- exp(int_par)
-    lb_ir <- exp(int_par + qnorm(0.025)*int_se)
-    ub_ir <- exp(int_par + qnorm(0.975)*int_se)
+    lb_ir <- exp(int_par + stats::qnorm(0.025)*int_se)
+    ub_ir <- exp(int_par + stats::qnorm(0.975)*int_se)
   }else{
     stop("current implementation only for control group")
   }

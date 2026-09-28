@@ -24,7 +24,7 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   }
 
   # fit coxmodel
-  model_formula <- as.formula(paste0("survival::Surv(",fupCol, ",",eventCol,") ~ group"))
+  model_formula <- stats::as.formula(paste0("survival::Surv(",fupCol, ",",eventCol,") ~ group"))
   modelobj <- fitmod_cox(model_formula, iptw = iptw,
                          model_type = model_type,aesi_name = aesi_name,aesifup_input)
 
@@ -38,8 +38,8 @@ estimate_HR <- function(aesifup_input, fupCol = "fup",
   hr_se <- coxcoef[colnames(coxcoef) == "robust se"]
 
   # get confidence interval
-  hr_lb <- hr_est + qnorm(0.025)*hr_se
-  hr_ub <- hr_est + qnorm(0.975)*hr_se
+  hr_lb <- hr_est + stats::qnorm(0.025)*hr_se
+  hr_ub <- hr_est + stats::qnorm(0.975)*hr_se
 
   # exponentiate
   hr_est <- exp(hr_est)
