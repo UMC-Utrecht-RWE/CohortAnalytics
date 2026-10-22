@@ -11,6 +11,7 @@ Authors@R:
 Description: Common functions to compute effect estimates in (matched, weighted)
     cohorts, such as incidence rates, prevalences, cumulative incidence (1-KM)
     risks, risk ratios and differences, and hazard ratios.
+URL: https://umc-utrecht-rwe.github.io/CohortAnalytics/
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
