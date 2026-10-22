@@ -1,6 +1,11 @@
 # ---------- dummy output for overall compute cohort -----
 # return a single row with optional flag
-dummy_compute_rates <- function(target_aesi, end_risk, flag = -99, comparison_measures = TRUE){
+dummy_compute_rates <- function(
+  target_aesi,
+  end_risk,
+  flag = -99,
+  comparison_measures = TRUE
+) {
   dummy_out <- data.frame(
     "aesi" = target_aesi,
     "n_pat_exp" = flag,
@@ -31,7 +36,7 @@ dummy_compute_rates <- function(target_aesi, end_risk, flag = -99, comparison_me
     "cuminc_ub_con_adj" = flag
   )
 
-  if(comparison_measures){
+  if (comparison_measures) {
     dummy_out <- cbind(
       dummy_out,
       data.frame(

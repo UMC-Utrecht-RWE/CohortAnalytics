@@ -1,4 +1,3 @@
-
 # helper functions to compute incidence rates and prevalence rates per group
 
 # this function uses analytic/closed form expressions (CIs valid under assumption of independent observations)
@@ -17,7 +16,14 @@
 #' @returns data.frame with `ir_est`, `ir_lb`, `ir_ub`, scaled by `scale_IR`. All -88 if `py == 0`.
 #' @export
 #'
-est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", CImethod = NULL){
+est_inc_prev <- function(
+  n_pat,
+  n_out,
+  py = NULL,
+  scale_IR,
+  type = "incidence",
+  CImethod = NULL
+) {
   #CImethod required for prevalence CIs
   # n_pat = n_pat_exp
   # n_out = n_out_exp
@@ -25,28 +31,32 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
   # scale_IR = scale_IR
   # type = type
 
-  if(py == 0){ return(data.frame(ir = -88,lb_ir = -88, ub_ir = -88)) }
-
-  if(type == "incidence"){
-    if(is.null(py)){stop("for incidence calculation, py must be non-NULL")}
-    # incidence CI using dobson formula
-    ir <- n_out/py
-    lb_ir <- max(0,((stats::qchisq(0.025, df=(2*n_out)))/2)/py)
-    ub_ir <- (stats::qchisq(0.975, df=(2*(n_out+1)))/2)/py
+  if (py == 0) {
+    return(data.frame(ir = -88, lb_ir = -88, ub_ir = -88))
   }
 
-  if(type == "prevalence"){
+  if (type == "incidence") {
+    if (is.null(py)) {
+      stop("for incidence calculation, py must be non-NULL")
+    }
+    # incidence CI using dobson formula
+    ir <- n_out / py
+    lb_ir <- max(0, ((stats::qchisq(0.025, df = (2 * n_out))) / 2) / py)
+    ub_ir <- (stats::qchisq(0.975, df = (2 * (n_out + 1))) / 2) / py
+  }
+
+  if (type == "prevalence") {
     # prevalence using clopper formula
-    if(CImethod == "clopper"){
+    if (CImethod == "clopper") {
       test_out <- stats::binom.test(n_out, n_pat)
       lb_ir <- test_out$conf.int[1]
       ub_ir <- test_out$conf.int[2]
       ir <- test_out$estimate
     }
     # prevalence using wilson formula
-    if(CImethod == "wilson"){
+    if (CImethod == "wilson") {
       ir <- n_out / n_pat
-      z <- stats::qnorm(0.975)  # z-score for 95% CI
+      z <- stats::qnorm(0.975) # z-score for 95% CI
       denom <- 1 + (z^2 / n_pat)
       term1 <- ir + (z^2 / (2 * n_pat))
       term2 <- z * sqrt((ir * (1 - ir) / n_pat) + (z^2 / (4 * n_pat^2)))
@@ -60,32 +70,39 @@ est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", 
     }
   }
 
-  return(data.frame(ir_est = ir*scale_IR, ir_lb = lb_ir*scale_IR, ir_ub = ub_ir*scale_IR))
+  return(data.frame(
+    ir_est = ir * scale_IR,
+    ir_lb = lb_ir * scale_IR,
+    ir_ub = ub_ir * scale_IR
+  ))
 }
 
 
 # model based estimation of ir's
 # takes as input a model object (typicaly a GEE model)
-est_inc_prev_model <- function(modelobj, group, scale_IR){
-  if(is.character(modelobj)){ return(data.frame(ir_est = -88,ir_lb = -88, ir_ub = -88)) }
+est_inc_prev_model <- function(modelobj, group, scale_IR) {
+  if (is.character(modelobj)) {
+    return(data.frame(ir_est = -88, ir_lb = -88, ir_ub = -88))
+  }
 
   model_summary <- summary(modelobj)
   int_par <- model_summary$beta[1]
   int_se <- model_summary$se.robust[1]
   group_par <- model_summary$beta[2]
-  group_se <-  model_summary$se.robust[2]
+  group_se <- model_summary$se.robust[2]
 
   # collect parameters
-  if(group == "CONTROL"){
+  if (group == "CONTROL") {
     ir <- exp(int_par)
-    lb_ir <- exp(int_par + stats::qnorm(0.025)*int_se)
-    ub_ir <- exp(int_par + stats::qnorm(0.975)*int_se)
-  }else{
+    lb_ir <- exp(int_par + stats::qnorm(0.025) * int_se)
+    ub_ir <- exp(int_par + stats::qnorm(0.975) * int_se)
+  } else {
     stop("current implementation only for control group")
   }
 
-  return(data.frame(ir_est = ir*scale_IR,
-                    ir_lb = lb_ir*scale_IR,
-                    ir_ub =  ub_ir*scale_IR
-  )
-  )}#end of function
+  return(data.frame(
+    ir_est = ir * scale_IR,
+    ir_lb = lb_ir * scale_IR,
+    ir_ub = ub_ir * scale_IR
+  ))
+} #end of function
