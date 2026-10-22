@@ -24,7 +24,7 @@ est_inc_prev <- function(
   type = "incidence",
   CImethod = NULL
 ) {
-  #CImethod required for prevalence CIs
+  # CImethod required for prevalence CIs
   # n_pat = n_pat_exp
   # n_out = n_out_exp
   # py = py_exp
@@ -105,4 +105,4 @@ est_inc_prev_model <- function(modelobj, group, scale_IR) {
     ir_lb = lb_ir * scale_IR,
     ir_ub = ub_ir * scale_IR
   ))
-} #end of function
+} # end of function

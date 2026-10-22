@@ -35,8 +35,8 @@ jobs:
   coverage:
     uses: UMC-Utrecht-RWE/rwe-ecosystem/.github/workflows/test_coverage.yaml@v2
     secrets: inherit
-    # with:
-    #   threshold: 70
+    with:
+      threshold: 0
 
   pkgdown:
     uses: UMC-Utrecht-RWE/rwe-ecosystem/.github/workflows/pkgdown.yaml@v2

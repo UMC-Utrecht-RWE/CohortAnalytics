@@ -46,7 +46,7 @@ process_cohort_data <- function(
     # 4b. create log person years for incidence estimators
     aesifup[, pyr_offset := log(get(pyrCol))]
   }
-  #5. check for individuals with exact 0 follow-up, remove if necessary
+  # 5. check for individuals with exact 0 follow-up, remove if necessary
   zerofup_indicator <- aesifup[, get(pyrCol)] == 0
   if (sum(zerofup_indicator) != 0) {
     # check what reason they have zero follow up time

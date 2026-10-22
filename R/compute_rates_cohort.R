@@ -87,8 +87,8 @@ compute_rates_cohort <- function(
   #   #                   "km_rsk_exp" =  -88, "lb_km_exp" = -88, "ub_km_exp" = -88,
   #   #                   "km_rsk_con" =  -88, "lb_km_con" = -88, "ub_km_con" = -88))
   # }
-  #====================================   COUNTS    =======================================#
-  #===== SUM PER GROUP
+  # ====================================   COUNTS    =======================================#
+  # ===== SUM PER GROUP
   n_pat_exp <- aesifup_input[aesifup_input$group == "EXPOSED", .N]
   n_pat_con <- aesifup_input[aesifup_input$group == "CONTROL", .N]
 
@@ -106,7 +106,7 @@ compute_rates_cohort <- function(
   py_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[pyrCol]])]
   py_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[pyrCol]])]
 
-  #==================================  INCIDENCE RATES   ==================================#
+  # ==================================  INCIDENCE RATES   ==================================#
   # create appropriate model type depending on desired estimand (incidence/prevalence)
   # with GEE model-based approahces incidence vs prevalence is determined by the offset
   # incidence - offset = log(pyr)
@@ -217,7 +217,7 @@ compute_rates_cohort <- function(
   colnames(ir_list_exp) <- paste0(colnames(ir_list_exp), "_exp")
   colnames(ir_list_con) <- paste0(colnames(ir_list_con), "_con")
 
-  #===============================  CUMULATIVE INCIDENCE   ==================================#
+  # ===============================  CUMULATIVE INCIDENCE   ==================================#
   if (risk_type == "survival" & CumulativeInc) {
     # ------------------- compute cumulative incidences/risks -------------------
     # first compute the max follow up time in each group
@@ -270,7 +270,7 @@ compute_rates_cohort <- function(
       )
     }
   } else {
-    #prevalence
+    # prevalence
     cuminc_ests_crude <- data.frame(
       time = -99,
       "cuminc_est_exp" = -99,
@@ -323,7 +323,7 @@ compute_rates_cohort <- function(
       cuminc_ests
     )
   } else if (comparison_measures) {
-    #================================   COMPARISION MEAURES   =================================#
+    # ================================   COMPARISION MEAURES   =================================#
     # ----------------------------------------------------------------------------
     # ----------------------- Risk Difference and Ratios -------------------------
     # ----------------------------------------------------------------------------
@@ -332,7 +332,7 @@ compute_rates_cohort <- function(
     # Hazard Ratios (matched and adjusted)
     # Risk Differences based on cumulative incidence differences
     if (nrow(aesifup) == 0) {
-      #ratio
+      # ratio
       rr_list <- data.frame(
         rr_est_crude = -99,
         rr_lb_crude = -99,
@@ -341,7 +341,7 @@ compute_rates_cohort <- function(
         rr_lb_adj = -99,
         rr_ub_adj = -99
       )
-      #difference
+      # difference
       rd_list <- data.frame(
         rd_est_crude = -99,
         rd_lb_crude = -99,
@@ -388,7 +388,7 @@ compute_rates_cohort <- function(
             model_type = "adj",
             aesi_name = target_aesi
           )
-          #rename columns
+          # rename columns
           colnames(adj_hr) <- paste0(colnames(adj_hr), "_adj")
           colnames(crude_hr) <- paste0(colnames(crude_hr), "_crude")
 
@@ -426,7 +426,7 @@ compute_rates_cohort <- function(
           } else {
             rd_list <- data.frame(
               rd_est_crude = rd_est_crude,
-              rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
+              rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
               rd_ub_crude = -88,
               rd_est_adj = rd_est_adj,
               rd_lb_adj = -88,
@@ -436,7 +436,7 @@ compute_rates_cohort <- function(
         } else {
           rd_list <- data.frame(
             rd_est_crude = rd_est_crude,
-            rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
+            rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
             rd_ub_crude = -88,
             rd_est_adj = rd_est_adj,
             rd_lb_adj = -88,
@@ -500,7 +500,7 @@ compute_rates_cohort <- function(
       }
     } # close if(nrow(aesifup) == 0)
 
-    #===================================   COMBINE ALL   ======================================#
+    # ===================================   COMBINE ALL   ======================================#
     #  ------ collect base information in a data.frame -----
     ests_out <- data.frame(
       aesi = target_aesi,
