@@ -2,7 +2,10 @@
 # helper functions to compute incidence rates and prevalence rates per group
 
 # this function uses analytic/closed form expressions (CIs valid under assumption of independent observations)
-#' Title
+#' Incidence rate or prevalence with analytic confidence intervals
+#'
+#' Incidence uses exact Poisson (chi-squared) CIs; prevalence uses Wilson or
+#' Clopper-Pearson CIs. CIs assume independent observations.
 #'
 #' @param n_pat number of patients (individuals)
 #' @param n_out number of outcomes
@@ -11,7 +14,7 @@
 #' @param type "incidence" or "prevalence"
 #' @param CImethod "wilson" or "clopper" based estimation of CIs
 #'
-#' @returns estimate of incidence/prevalence and CIs
+#' @returns data.frame with `ir_est`, `ir_lb`, `ir_ub`, scaled by `scale_IR`. All -88 if `py == 0`.
 #' @export
 #'
 est_inc_prev <- function(n_pat, n_out, py = NULL, scale_IR, type = "incidence", CImethod = NULL){

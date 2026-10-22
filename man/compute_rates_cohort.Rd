@@ -57,16 +57,24 @@ compute_rates_cohort(
 
 \item{weighted_IR}{use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)}
 
-\item{end_risk}{end of risk period}
+\item{end_risk}{end of the risk period (follow-up time at which cumulative incidence is evaluated); may be \code{NULL}}
 
 \item{output_format}{defaults to \code{data.table}, otherwise returns data.frame.}
 
-\item{minimum_count_for_comparative}{defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed}
+\item{minimum_count_for_comparative}{defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed (flagged -77). Use \code{NULL} to disable}
 }
 \value{
-cohort analytic statistics
+One-row \code{data.table} (or data.frame) with the outcome name, patient
+counts, outcome counts, person-years and incidence/prevalence per group,
+cumulative incidences at \code{end_risk}, and crude and adjusted (weighted) risk
+ratios and differences with 95\% CIs.
 }
 \description{
 Wrapper function to compute statistics relating to incidence, prevalences and risks (ratios and differences)
 per group and between groups
+}
+\details{
+Flag values replace estimates that could not be computed: -88 (model
+failure or no data), -99 (not requested, e.g. \code{CumulativeInc = FALSE}), -77
+(suppressed by \code{minimum_count_for_comparative}).
 }

@@ -1,5 +1,19 @@
-# ---- function to estimate hazard ratios -------------
-# returns dummy output if not possible to estimate
+#' Estimate a hazard ratio for exposed vs control
+#'
+#' Fits a Cox model (`group` as the only covariate) with robust standard errors
+#' clustered on `person_id`.
+#'
+#' @param aesifup_input data.table with `group`, `person_id` and the follow-up, event and weight columns.
+#' @param fupCol name of the follow-up time column.
+#' @param eventCol name of the event indicator column.
+#' @param iptw name of the weight column, used when `model_type = "adj"`.
+#' @param model_type "crude" (unweighted) or "adj" (weighted by `iptw`).
+#' @param return_dummy_output if TRUE, return the flag output without fitting.
+#' @param aesi_name outcome name, for logging.
+#'
+#' @returns data.frame with `hr_est`, `hr_lb`, `hr_ub` (95% CI). All -88 if the
+#'   model cannot be fitted or there are no events.
+#' @export
 estimate_HR <- function(aesifup_input, fupCol = "fup",
                         eventCol = "eventCount",
                         iptw = "ip_weights",
