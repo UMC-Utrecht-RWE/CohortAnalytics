@@ -4,12 +4,23 @@
 \name{CohortAnalytics-package}
 \alias{CohortAnalytics}
 \alias{CohortAnalytics-package}
-\title{CohortAnalytics: What the Package Does (One Line, Title Case)}
+\title{CohortAnalytics: Calculation or Model Estimates of Cohort Analytics}
 \description{
-What the package does (one paragraph).
+Common functions to compute effect estimates in (matched, weighted) cohorts, such as incidence rates, prevalences, cumulative incidence (1-KM) risks, risk ratios and differences, and hazard ratios.
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Yinan Mao \email{ymao@umcutrecht.nl} [contributor]
+
+Authors:
+\itemize{
+  \item Oisin Ryan
+}
+
+Other contributors:
+\itemize{
+  \item Sebastian Moraga Mildiner [contributor]
+  \item Niklas Hlubek [reviewer]
+}
 
 }
 \keyword{internal}

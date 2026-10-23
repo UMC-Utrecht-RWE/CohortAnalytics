@@ -30,12 +30,19 @@
 #' @param scale_IR what scaling to perform for incidence/prevalence, i.e., events per X. Defaults to 10000
 #' @param model_based_control TRUE/FALSE. Use GEE to estimate incidence/prevalence in the control group (TRUE) or an analytic formula that assumes independent observations (FALSE)
 #' @param weighted_IR use iptw column to weight the incidence/prevalence estimates per group (TRUE) or output unweighted incidence/prevalence in the exposed and control (FALSE)
-#' @param end_risk end of risk period
+#' @param end_risk end of the risk period (follow-up time at which cumulative incidence is evaluated); may be `NULL`
 #' @param output_format defaults to `data.table`, otherwise returns data.frame.
-#' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed
+#' @param minimum_count_for_comparative defaults to 3; should a minimum event count be applied in order to display results, all estimates relating to event counts less than this will be suppressed (flagged -77). Use `NULL` to disable
+#'
+#' @details Flag values replace estimates that could not be computed: -88 (model
+#'   failure or no data), -99 (not requested, e.g. `CumulativeInc = FALSE`), -77
+#'   (suppressed by `minimum_count_for_comparative`).
 #'
 #' @import data.table
-#' @returns cohort analytic statistics
+#' @returns One-row `data.table` (or data.frame) with the outcome name, patient
+#'   counts, outcome counts, person-years and incidence/prevalence per group,
+#'   cumulative incidences at `end_risk`, and crude and adjusted (weighted) risk
+#'   ratios and differences with 95% CIs.
 #' @export
 #'
 compute_rates_cohort <- function(
@@ -80,8 +87,8 @@ compute_rates_cohort <- function(
   #   #                   "km_rsk_exp" =  -88, "lb_km_exp" = -88, "ub_km_exp" = -88,
   #   #                   "km_rsk_con" =  -88, "lb_km_con" = -88, "ub_km_con" = -88))
   # }
-  #====================================   COUNTS    =======================================#
-  #===== SUM PER GROUP
+  # ====================================   COUNTS    =======================================#
+  # ===== SUM PER GROUP
   n_pat_exp <- aesifup_input[aesifup_input$group == "EXPOSED", .N]
   n_pat_con <- aesifup_input[aesifup_input$group == "CONTROL", .N]
 
@@ -99,7 +106,7 @@ compute_rates_cohort <- function(
   py_exp <- aesifup_input[aesifup_input$group == "EXPOSED", sum(.SD[[pyrCol]])]
   py_con <- aesifup_input[aesifup_input$group == "CONTROL", sum(.SD[[pyrCol]])]
 
-  #==================================  INCIDENCE RATES   ==================================#
+  # ==================================  INCIDENCE RATES   ==================================#
   # create appropriate model type depending on desired estimand (incidence/prevalence)
   # with GEE model-based approahces incidence vs prevalence is determined by the offset
   # incidence - offset = log(pyr)
@@ -210,7 +217,7 @@ compute_rates_cohort <- function(
   colnames(ir_list_exp) <- paste0(colnames(ir_list_exp), "_exp")
   colnames(ir_list_con) <- paste0(colnames(ir_list_con), "_con")
 
-  #===============================  CUMULATIVE INCIDENCE   ==================================#
+  # ===============================  CUMULATIVE INCIDENCE   ==================================#
   if (risk_type == "survival" & CumulativeInc) {
     # ------------------- compute cumulative incidences/risks -------------------
     # first compute the max follow up time in each group
@@ -263,7 +270,7 @@ compute_rates_cohort <- function(
       )
     }
   } else {
-    #prevalence
+    # prevalence
     cuminc_ests_crude <- data.frame(
       time = -99,
       "cuminc_est_exp" = -99,
@@ -316,7 +323,7 @@ compute_rates_cohort <- function(
       cuminc_ests
     )
   } else if (comparison_measures) {
-    #================================   COMPARISION MEAURES   =================================#
+    # ================================   COMPARISION MEAURES   =================================#
     # ----------------------------------------------------------------------------
     # ----------------------- Risk Difference and Ratios -------------------------
     # ----------------------------------------------------------------------------
@@ -325,7 +332,7 @@ compute_rates_cohort <- function(
     # Hazard Ratios (matched and adjusted)
     # Risk Differences based on cumulative incidence differences
     if (nrow(aesifup) == 0) {
-      #ratio
+      # ratio
       rr_list <- data.frame(
         rr_est_crude = -99,
         rr_lb_crude = -99,
@@ -334,7 +341,7 @@ compute_rates_cohort <- function(
         rr_lb_adj = -99,
         rr_ub_adj = -99
       )
-      #difference
+      # difference
       rd_list <- data.frame(
         rd_est_crude = -99,
         rd_lb_crude = -99,
@@ -381,7 +388,7 @@ compute_rates_cohort <- function(
             model_type = "adj",
             aesi_name = target_aesi
           )
-          #rename columns
+          # rename columns
           colnames(adj_hr) <- paste0(colnames(adj_hr), "_adj")
           colnames(crude_hr) <- paste0(colnames(crude_hr), "_crude")
 
@@ -419,7 +426,7 @@ compute_rates_cohort <- function(
           } else {
             rd_list <- data.frame(
               rd_est_crude = rd_est_crude,
-              rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
+              rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
               rd_ub_crude = -88,
               rd_est_adj = rd_est_adj,
               rd_lb_adj = -88,
@@ -429,7 +436,7 @@ compute_rates_cohort <- function(
         } else {
           rd_list <- data.frame(
             rd_est_crude = rd_est_crude,
-            rd_lb_crude = -88, #To be plugged in when the bootstrapping is ready
+            rd_lb_crude = -88, # To be plugged in when the bootstrapping is ready
             rd_ub_crude = -88,
             rd_est_adj = rd_est_adj,
             rd_lb_adj = -88,
@@ -493,7 +500,7 @@ compute_rates_cohort <- function(
       }
     } # close if(nrow(aesifup) == 0)
 
-    #===================================   COMBINE ALL   ======================================#
+    # ===================================   COMBINE ALL   ======================================#
     #  ------ collect base information in a data.frame -----
     ests_out <- data.frame(
       aesi = target_aesi,
