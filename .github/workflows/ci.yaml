@@ -24,9 +24,9 @@ jobs:
   check:
     uses: UMC-Utrecht-RWE/rwe-ecosystem/.github/workflows/r_cmd_check.yaml@v2
     secrets: inherit
-    # with:
-    #   error-on: '"error"'
-    #   matrix: '[{"os": "ubuntu-latest", "r": "release"}]'
+    with:
+      error-on: '"error"'
+      matrix: '[{"os": "windows-latest", "r": "release"}]'
 
   # code-quality:
   #   uses: UMC-Utrecht-RWE/rwe-ecosystem/.github/workflows/code_quality.yaml@v2
