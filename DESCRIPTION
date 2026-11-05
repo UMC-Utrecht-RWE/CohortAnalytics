@@ -1,9 +1,17 @@
 Package: CohortAnalytics
-Title: What the Package Does (One Line, Title Case)
+Title: Calculation or Model Estimates of Cohort Analytics
 Version: 0.0.1
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Authors@R:
+    c(
+        person(given = "Oisin", family = "Ryan", role = c("aut")),
+        person(given = "Yinan", family = "Mao", email ="ymao@umcutrecht.nl", role = c("ctb", "cre")),
+        person(given = "Sebastian", middle = "Mildiner", family = "Moraga", role = "ctb"),
+        person(given = "Niklas", family = "Hlubek", role = "rev")
+    )
+Description: Common functions to compute effect estimates in (matched, weighted)
+    cohorts, such as incidence rates, prevalences, cumulative incidence (1-KM)
+    risks, risk ratios and differences, and hazard ratios.
+URL: https://umc-utrecht-rwe.github.io/CohortAnalytics/
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -13,5 +21,4 @@ Imports:
     msm,
     logger,
     data.table
-Config/roxygen2/version: 8.1.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.1

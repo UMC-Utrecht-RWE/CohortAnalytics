@@ -173,7 +173,7 @@ create_risk_table <- function(
 # outputs time (in days), and point estimates + CIs scaled according to per_pyr
 # assumes fit object person time counted in years
 est_km <- function(fit, ndaystotimepoint, days_to_years = FALSE, per_pyr = 1) {
-  #ndaystotimepoint <- 180
+  # ndaystotimepoint <- 180
   time_out <- ndaystotimepoint
   if (days_to_years == TRUE) {
     ndaystotimepoint <- ndaystotimepoint / 365.25
@@ -184,7 +184,7 @@ est_km <- function(fit, ndaystotimepoint, days_to_years = FALSE, per_pyr = 1) {
       data.table::last(fit$time) >= ndaystotimepoint &
         min(fit$time) < ndaystotimepoint
     ) {
-      #if not met, we do not show the results
+      # if not met, we do not show the results
       here <- which(fit$time == max(fit$time[fit$time <= ndaystotimepoint]))
       rsk <- (1 - fit$surv[!is.na(fit$surv)][here])
       rsk.lb <- (1 - fit$upper[!is.na(fit$surv)][here])
