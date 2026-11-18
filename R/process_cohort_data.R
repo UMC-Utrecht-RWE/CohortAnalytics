@@ -1,5 +1,20 @@
-# ---- function to perform standard pre-processing steps
+#' Pre-process cohort data for analysis
+#'
+#' Standard pre-processing before [compute_rates_cohort()]: sets `CONTROL` as the
+#' reference level of `group`, creates a numeric person id (`person_id_num`),
+#' sorts by it, creates the log person-time offset (`pyr_offset`), and drops pairs
+#' with zero follow-up or missing weights.
+#'
+#' @param aesifup data.table with columns `group` (EXPOSED/CONTROL), `person_id`,
+#'   `id` (pair id) and follow-up. Modified by reference for some steps.
+#' @param estimator "incidence" or "prevalence". For prevalence the offset is `log(1)`.
+#' @param fupdays name of the follow-up (days) column.
+#' @param pyrCol name of the person-years column; computed as `fup / 365.25` if absent.
+#' @param ipweight name of the weight column; rows with `NA` weights are dropped with their pair.
+#'
+#' @returns data.table with added columns `person_id_num` and `pyr_offset`.
 #' @import data.table
+#' @export
 process_cohort_data <- function(
   aesifup,
   estimator,
@@ -31,7 +46,7 @@ process_cohort_data <- function(
     # 4b. create log person years for incidence estimators
     aesifup[, pyr_offset := log(get(pyrCol))]
   }
-  #5. check for individuals with exact 0 follow-up, remove if necessary
+  # 5. check for individuals with exact 0 follow-up, remove if necessary
   zerofup_indicator <- aesifup[, get(pyrCol)] == 0
   if (sum(zerofup_indicator) != 0) {
     # check what reason they have zero follow up time
@@ -41,7 +56,6 @@ process_cohort_data <- function(
     logger::log_info(
       paste(
         "For AESI",
-        target_aesi,
         sum(zerofup_indicator),
         "individuals with zero fup... Dropping",
         length(drop_pair_ids),
@@ -61,7 +75,6 @@ process_cohort_data <- function(
     logger::log_info(
       paste(
         "For AESI",
-        target_aesi,
         sum(zeroweight_indicator),
         "individuals with zero fup... Dropping",
         length(drop_pair_ids_weight),

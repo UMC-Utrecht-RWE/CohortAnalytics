@@ -2,7 +2,7 @@
 % Please edit documentation in R/est_inc_prev.R
 \name{est_inc_prev}
 \alias{est_inc_prev}
-\title{Title}
+\title{Incidence rate or prevalence with analytic confidence intervals}
 \usage{
 est_inc_prev(
   n_pat,
@@ -27,8 +27,9 @@ est_inc_prev(
 \item{CImethod}{"wilson" or "clopper" based estimation of CIs}
 }
 \value{
-estimate of incidence/prevalence and CIs
+data.frame with \code{ir_est}, \code{ir_lb}, \code{ir_ub}, scaled by \code{scale_IR}. All -88 if \code{py == 0}.
 }
 \description{
-Title
+Incidence uses exact Poisson (chi-squared) CIs; prevalence uses Wilson or
+Clopper-Pearson CIs. CIs assume independent observations.
 }
